@@ -5,7 +5,7 @@ from .serializers import UserRegisterSerializer, UserProfileSerializer
 
 User = get_user_model() #Assigns the active custom user model to the User variable
 
-class UserViewSet(viewsets.ModalViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     def get_serializer_class(self):
         if self.action == 'create':
