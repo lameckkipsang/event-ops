@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from cloudinary.models import CloudinaryField
 # Create your models here.
 
 class Event(models.Model):
@@ -10,6 +11,7 @@ class Event(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField()
+    banner = CloudinaryField('image', blank=True, null=True)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     venue_name = models.CharField(max_length=150)
