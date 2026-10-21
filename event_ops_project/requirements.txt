@@ -1,7 +1,9 @@
 asgiref==3.12.1
 certifi==2026.10.19
 charset-normalizer==3.5.2
+cloudinary==1.46.3
 dj-database-url==3.1.2
+dj3-cloudinary-storage==0.0.6
 Django==6.1.2
 djangorestframework==3.18.3
 djangorestframework_simplejwt==5.5.1
@@ -11,6 +13,7 @@ psycopg2-binary==2.9.13
 PyJWT==2.15.1
 python-decouple==3.8
 requests==2.34.2
+six==1.17.0
 sqlparse==0.6.0
 tzdata==2026.5
 urllib3==2.8.0
