@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -78,13 +79,27 @@ WSGI_APPLICATION = 'event_ops_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+if config('DATABASE_URL', default=None):
+    DATABASES = {
+        'default': dj_database_url.config(default=config('DATABASE_URL'))
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='event_ops_db'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default=''),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
