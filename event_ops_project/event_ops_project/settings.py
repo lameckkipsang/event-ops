@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'marketplace',
     'cloudinary_storage',
     'cloudinary',
+    'finance',
 ]
 
 MIDDLEWARE = [
