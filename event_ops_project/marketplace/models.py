@@ -12,6 +12,11 @@ class ServiceCategory(models.Model):
         return self.name
 
 class VendorPackage(models.Model):
+    class TierChoices(models.TextChoices):
+        BASIC = 'BASIC', 'Basic'
+        STANDARD = 'STANDARD', 'Standard'
+        PREMIUM = 'PREMIUM', 'Premium'
+        CUSTOM = 'CUSTOM', 'Custom'
     vendor = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
@@ -24,13 +29,18 @@ class VendorPackage(models.Model):
         related_name='packages'
     )
     title = models.CharField(max_length=150)
+    tier = models.CharField(
+        max_length=20,
+        choices=TierChoices.choices,
+        default=TierChoices.STANDARD
+    )
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} by {self.vendor.username}"
+        return f"{self.title} ({self.get_tier_display()}) by {self.vendor.username}"
 
 class BookingRequest(models.Model):
     class Status(models.TextChoices):
