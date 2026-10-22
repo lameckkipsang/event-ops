@@ -43,15 +43,20 @@ class InitiateSTKPushView(APIView):
         )
 
         if daraja_response.get('ResponseCode') == '0':
-            Transaction.objects.create(
-                organizer=request.user,
+            checkout_request_id = daraja_response.get('CheckoutRequestID')
+            merchant_request_id = daraja_response.get('MerchantRequestID')
+
+            transaction, created = Transaction.objects.update_or_create(
                 booking=booking_request,
-                amount=payment_amount,
-                phone_number=phone_number,
-                checkout_request_id=daraja_response.get('CheckoutRequestID'),
-                merchant_request_id=daraja_response.get('MerchantRequestID'),
-                status='PENDING',
-                escrow_status='HELD'
+                defaults={
+                    'organizer': request.user,
+                    'amount': payment_amount,
+                    'phone_number': phone_number,
+                    'checkout_request_id': checkout_request_id,
+                    'merchant_request_id': merchant_request_id,
+                    'status': 'PENDING',
+                    'escrow_status': 'HELD'
+                }
             )
             return Response({
                 "message": "STK Push initiated successfully. Check your phone to complete payment.",
