@@ -19,7 +19,6 @@ def get_mpesa_access_token():
         return None
 
 def generate_mpesa_password(shortcode, passkey, timestamp):
-    # Using the + operator for string concatenation just like your class project
     data_to_encode = shortcode + passkey + timestamp
     encoded_string = base64.b64encode(data_to_encode.encode())
     return encoded_string.decode('utf-8')
