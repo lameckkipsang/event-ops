@@ -89,6 +89,7 @@ class MpesaCallbackView(APIView):
                 transaction_record.save()
             else:
                 transaction_record.status = 'FAILED'
+                transaction_record.escrow_status = 'CANCELLED'  
                 transaction_record.save()
 
         except Transaction.DoesNotExist:

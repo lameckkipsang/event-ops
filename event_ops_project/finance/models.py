@@ -8,12 +8,14 @@ class Transaction(models.Model):
         ('PENDING', 'Pending'),
         ('COMPLETED', 'Completed'),
         ('FAILED', 'Failed'),
+        ('CANCELLED', 'Cancelled / Failed'),
     )
     
     ESCROW_STATUS = (
         ('HELD', 'Held in Escrow'),
         ('RELEASED', 'Released to Vendor'),
         ('REFUNDED', 'Refunded to Organizer'),
+        ('CANCELLED', 'Cancelled / No Funds Held'),
     )
 
     organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payments')
