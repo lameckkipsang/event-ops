@@ -9,6 +9,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
 class VendorPackageSerializer(serializers.ModelSerializer):
     vendor_username = serializers.ReadOnlyField(source='vendor.username')
     category_name = serializers.ReadOnlyField(source='category.name')
+    tier_display = serializers.CharField(source='get_tier_display', read_only=True)
 
     class Meta:
         model = VendorPackage
@@ -18,7 +19,9 @@ class VendorPackageSerializer(serializers.ModelSerializer):
             'vendor_username', 
             'category', 
             'category_name', 
-            'title', 
+            'title',
+            'tier',
+            'tier_display' 
             'description', 
             'price', 
             'is_available', 
