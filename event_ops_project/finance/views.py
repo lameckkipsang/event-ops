@@ -1,6 +1,4 @@
 from django.shortcuts import render
-
-# Create your views here.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -9,6 +7,8 @@ from marketplace.models import BookingRequest
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import InitiatePaymentSerializer
+
+# Create your views here.
 
 class InitiateSTKPushView(APIView):
     """
@@ -98,3 +98,45 @@ class MpesaCallbackView(APIView):
             return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"ResultCode": 0, "ResultDesc": "Success"})
+
+class ReleaseEscrowView(APIView):
+    """
+    Endpoint to release held escrow funds to the vendor upon event/job completion.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, transaction_id):
+        try:
+            # Retrieve the transaction record
+            transaction = Transaction.objects.get(id=transaction_id)
+
+            # Ensure payment was completed and funds are currently held in escrow
+            if transaction.status != 'COMPLETED' or transaction.escrow_status != 'HELD':
+                return Response(
+                    {"error": "Transaction is not eligible for escrow release."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Mark escrow as released
+            transaction.escrow_status = 'RELEASED'
+            transaction.save()
+
+            return Response(
+                {
+                    "message": "Escrow released successfully. Vendor payout cleared.",
+                    "transaction_id": transaction.id,
+                    "escrow_status": transaction.escrow_status
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Transaction.DoesNotExist:
+            return Response(
+                {"error": "Transaction record not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
