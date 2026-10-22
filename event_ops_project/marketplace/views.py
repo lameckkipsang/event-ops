@@ -29,6 +29,21 @@ class VendorPackageViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated(), IsVendorOrReadOnly()]
         return [permissions.AllowAny()]
+    def get_queryset(self):
+        """
+        Allow filtering packages by tier and category via query parameters.
+        For example: /api/marketplace/packages/?tier=PREMIUM&category=2
+        """
+        queryset = super().get_queryset()
+        tier = self.request.query_params.get('tier')
+        category = self.request.query_params.get('category')
+        
+        if tier:
+            queryset = queryset.filter(tier=tier.upper())
+        if category:
+            queryset = queryset.filter(category_id=category)
+            
+        return queryset
 
 class BookingRequestViewSet(viewsets.ModelViewSet):
     queryset = BookingRequest.objects.all().order_by('-created_at')

@@ -21,7 +21,7 @@ class VendorPackageSerializer(serializers.ModelSerializer):
             'category_name', 
             'title',
             'tier',
-            'tier_display' 
+            'tier_display',
             'description', 
             'price', 
             'is_available', 
