@@ -6,7 +6,8 @@ from .models import Transaction
 from marketplace.models import BookingRequest
 from .daraja import initiate_stk_push
 from django.conf import settings
-from .serializers import InitiatePaymentSerializer
+from .serializers import InitiatePaymentSerializer, TransactionSerializer
+from rest_framework import generics
 
 # Create your views here.
 
@@ -145,3 +146,19 @@ class ReleaseEscrowView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class TransactionHistoryListView(generics.ListAPIView):
+    """
+    Retrieve transaction and escrow history based on user role.
+    Organizers see their own payments, vendors see payments tied to their packages.
+    """
+    serializer_class = TransactionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Transaction.objects.all().order_by('-created_at')
+        if getattr(user, 'role', None) == 'VENDOR':
+            return Transaction.objects.filter(booking__package__vendor=user).order_by('-created_at')
+        return Transaction.objects.filter(organizer=user).order_by('-created_at')
