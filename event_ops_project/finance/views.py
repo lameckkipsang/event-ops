@@ -7,6 +7,7 @@ from rest_framework import status, permissions
 from .models import Transaction
 from marketplace.models import BookingRequest
 from .daraja import initiate_stk_push
+from django.conf import settings
 from .serializers import InitiatePaymentSerializer
 
 class InitiateSTKPushView(APIView):
@@ -31,7 +32,7 @@ class InitiateSTKPushView(APIView):
 
         payment_amount = booking_request.package.price
         
-        callback_url = "https://your-ngrok-domain.ngrok-free.app/api/finance/mpesa-callback/"
+        callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
 
         # Call function from daraja.py
         daraja_response = initiate_stk_push(
