@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import Ticket
+from .models import Ticket, TicketTier
 from .serializers import TicketSerializer, TicketCheckInSerializer
 # Create your views here.
 
@@ -10,11 +10,29 @@ class TicketPurchaseView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = TicketSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(attendee=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        tier_id = request.data.get('tier')
+        
+        try:
+            tier = TicketTier.objects.get(id=tier_id)
+        except TicketTier.DoesNotExist:
+            return Response({"error": "Invalid or non-existent ticket tier."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Ensure tickets are available in this tier
+        if tier.quantity_available <= 0:
+            return Response({"error": "Tickets for this tier are sold out."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Securely assign event and tier data on the backend
+        ticket = Ticket.objects.create(
+            event=tier.event,
+            tier=tier,
+            attendee=request.user
+        )
+        # Decrement stock count
+        tier.quantity_available -= 1
+        tier.save()
+
+        serializer = TicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class UserTicketListView(APIView):
