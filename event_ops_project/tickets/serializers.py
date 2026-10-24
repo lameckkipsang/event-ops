@@ -5,6 +5,7 @@ class TicketTierSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketTier
         fields = ['id', 'event', 'ticket_type', 'price', 'quantity_available']
+        read_only_fields = ['event']
 
 class TicketSerializer(serializers.ModelSerializer):
     event_title = serializers.CharField(source='event.title', read_only=True)
