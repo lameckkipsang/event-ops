@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from .models import Event
+from tickets.serializers import TicketTierSerializer
+from tickets.models import TicketTier
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
-
+    ticket_tiers = TicketTierSerializer(many=True, required=False)
     class Meta:
         model = Event
         fields = (
@@ -17,6 +19,7 @@ class EventSerializer(serializers.ModelSerializer):
             'venue_name', 
             'venue_location', 
             'max_capacity', 
+            'ticket_tiers',
             'created_at'
         )
         read_only_fields = ('id', 'organizer', 'created_at')
@@ -26,4 +29,14 @@ class EventSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['organizer'] = request.user
-        return super().create(validated_data)
+        # Extract ticket tiers data if provided in the payload
+        tiers_data = validated_data.pop('ticket_tiers', [])
+        
+        # Create the event instance
+        event = super().create(validated_data)
+
+        # Create each associated ticket tier and link it to this event
+        for tier_data in tiers_data:
+            TicketTier.objects.create(event=event, **tier_data)
+
+        return event
