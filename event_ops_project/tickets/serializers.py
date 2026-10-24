@@ -19,7 +19,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'is_checked_in', 
             'purchased_at'
         ]
-        read_only_fields = ['id', 'ticket_code', 'is_checked_in', 'purchased_at']
+        read_only_fields = ['id', 'attendee', 'ticket_code', 'is_checked_in', 'purchased_at']
 
 class TicketCheckInSerializer(serializers.ModelSerializer):
     class Meta:
