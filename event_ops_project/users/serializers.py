@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 import uuid
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
 User = get_user_model()
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -27,3 +29,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'role', 'phone_number', 'company_name', 'is_verified')
         read_only_fields = ('id', 'role', 'is_verified')
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        # Extract email and password from the request data
+        email = attrs.get("email")
+        password = attrs.get("password")
+
+        if email and password:
+            # Authenticate using Django's backend with email
+            user = authenticate(request=self.context.get('request'), email=email, password=password)
+            
+            if not user:
+                raise serializers.ValidationError("No active account found with the given credentials.")
+            
+            # Generate tokens for the authenticated user
+            refresh = self.get_token(user)
+            return {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
+        raise serializers.ValidationError("Must include 'email' and 'password'.")
