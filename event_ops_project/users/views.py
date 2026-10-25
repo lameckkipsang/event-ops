@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from django.contrib.auth import get_user_model
-from .serializers import UserRegisterSerializer, UserProfileSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import UserRegisterSerializer, UserProfileSerializer, CustomTokenObtainPairSerializer
 # Create your views here.
 
 User = get_user_model() #Assigns the active custom user model to the User variable
@@ -15,3 +16,6 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
