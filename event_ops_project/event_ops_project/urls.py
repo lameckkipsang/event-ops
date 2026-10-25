@@ -24,4 +24,7 @@ urlpatterns = [
     path('api/', include('marketplace.urls')),
     path('api/finance/', include('finance.urls')),
     path('api/tickets/', include('tickets.urls')),
+    path('api/auth/', include('dj_rest_auth.urls')),
+    path('api/auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('api/auth/social/', include('dj_rest_auth.social_urls')), # Handles Google login endpoint
 ]
