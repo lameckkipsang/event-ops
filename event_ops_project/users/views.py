@@ -20,6 +20,10 @@ class SignupView(View):
     def get(self, request):
         return render(request, 'signup.html')
 
+class UserProfileView(View):
+    def get(self, request):
+        return render(request, 'profile.html', {'user': request.user})
+
 User = get_user_model() #Assigns the active custom user model to the User variable
 
 class UserViewSet(viewsets.ModelViewSet):
