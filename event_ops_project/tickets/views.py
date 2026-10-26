@@ -1,4 +1,6 @@
 import requests
+import base64
+from datetime import datetime
 from django.conf import settings
 from django.shortcuts import render
 from rest_framework.views import APIView
@@ -92,26 +94,63 @@ class CheckoutInitiateView(APIView):
         except TicketTier.DoesNotExist:
             return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Calculate total amount
         total_amount = int(tier.price * quantity)
 
-        # M-Pesa STK Push Trigger using Django settings
+        #Fetch Daraja Credentials from Django Settings
         consumer_key = getattr(settings, 'MPESA_CONSUMER_KEY', None)
         consumer_secret = getattr(settings, 'MPESA_CONSUMER_SECRET', None)
-        api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        shortcode = getattr(settings, 'MPESA_SHORTCODE', None)
+        passkey = getattr(settings, 'MPESA_PASSKEY', None)
+        callback_url = getattr(settings, 'MPESA_CALLBACK_URL', None)
 
+        if not all([consumer_key, consumer_secret, shortcode, passkey]):
+            return Response({"error": "M-Pesa configuration missing in settings."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        #Generate OAuth Access Token
+        api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
         auth_response = requests.get(api_url, auth=(consumer_key, consumer_secret))
+        
+        if auth_response.status_code != 200:
+            return Response({"error": "Failed to authenticate with Daraja API."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
         access_token = auth_response.json().get('access_token')
 
-        if not access_token:
-            return Response({"error": "Failed to authenticate with Daraja API."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        #Generate STK Push Password & Timestamp
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        data_to_encode = f"{shortcode}{passkey}{timestamp}"
+        password = base64.b64encode(data_to_encode.encode()).decode('utf-8')
 
-        return Response({
-            "message": "STK Push initiated successfully",
-            "details": {
-                "ticket_tier": tier.ticket_type,
-                "quantity": quantity,
-                "total_amount": total_amount,
-                "phone_number": phone_number
-            }
-        }, status=status.HTTP_200_OK)
+        #Send STK Push Request to Safaricom Sandbox
+        stk_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "BusinessShortCode": shortcode,
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerPayBillOnline",
+            "Amount": total_amount,
+            "PartyA": phone_number,
+            "PartyB": shortcode,
+            "PhoneNumber": phone_number,
+            "CallBackURL": callback_url,
+            "AccountReference": "EventOps",
+            "TransactionDesc": f"Payment for {quantity} x {tier.ticket_type}"
+        }
+
+        stk_response = requests.post(stk_url, json=payload, headers=headers)
+        stk_data = stk_response.json()
+
+        if stk_response.status_code == 200 and stk_data.get('ResponseCode') == '0':
+            return Response({
+                "message": "STK push sent successfully. Check your phone.",
+                "checkout_request_id": stk_data.get('CheckoutRequestID'),
+                "merchant_request_id": stk_data.get('MerchantRequestID')
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "error": "M-Pesa STK push failed",
+                "details": stk_data
+            }, status=status.HTTP_400_BAD_REQUEST)
