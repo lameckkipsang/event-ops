@@ -78,12 +78,12 @@
         <p>Sign in to access your event tickets</p>
 
         <!-- Google OAuth Login Button -->
-        <a href="{% provider_login_url 'google' %}" class="btn-google">
+        <a href="{% provider_login_url 'google' process='login' %}" class="btn-google">
             Sign in with Google
         </a>
 
         <div class="footer-text">
-            Don't have an account? <a href="{% url 'account_signup' %}">Sign up</a>
+            Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
         </div>
     </div>
 

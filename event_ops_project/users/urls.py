@@ -13,7 +13,7 @@ urlpatterns = [
     # dj-rest-auth base endpoints
     path('auth/', include('dj_rest_auth.urls')),
     # Google OAuth endpoint
-    path('auth/google/', GoogleLogin.as_view(), name='google_login'),
+    path('auth/google/', GoogleLogin.as_view(), name='rest_google_login'),
     path('login/', LoginView.as_view(), name='login'),
     path('signup/', SignupView.as_view(), name='signup'),
 ]

@@ -78,12 +78,12 @@
         <p>Join EventOps to buy and manage event tickets</p>
 
         <!-- Google OAuth Signup Button -->
-        <a href="{% provider_login_url 'google' %}" class="btn-google">
-            Sign up with Google
+        <a href="{% provider_login_url 'google' process='login' %}" class="btn-google">
+            Sign in with Google
         </a>
 
         <div class="footer-text">
-            Already have an account? <a href="{% url 'account_login' %}">Sign in</a>
+            Already have an account? <a href="{% url 'login' %}">Sign in</a>
         </div>
     </div>
 
