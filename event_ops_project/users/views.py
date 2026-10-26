@@ -12,11 +12,11 @@ from dj_rest_auth.registration.views import SocialLoginView
 
 class LoginView(View):
     def get(self, request):
-        return render(request, 'users/login.html')
+        return render(request, 'login.html')
 
 class SignupView(View):
     def get(self, request):
-        return render(request, 'users/signup.html')
+        return render(request, 'signup.html')
 
 User = get_user_model() #Assigns the active custom user model to the User variable
 
