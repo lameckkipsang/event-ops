@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventOps - Sign In</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0d3b2e, #1b4d3e, #d97706);
+            background-size: 300% 300%;
+            animation: gradientShift 15s ease infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 340px;
+        }
+        .login-card h2 {
+            margin-bottom: 8px;
+            color: #064e3b;
+            font-size: 26px;
+        }
+        .login-card p {
+            color: #4b5563;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .btn-google {
+            display: inline-block;
+            width: 100%;
+            background: linear-gradient(135deg, #059669, #d97706);
+            color: white;
+            padding: 12px 0;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .btn-google:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .footer-text {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #4b5563;
+        }
+        .footer-text a {
+            color: #059669;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    {% load socialaccount %}
+
+    <div class="login-card">
+        <h2>EventOps</h2>
+        <p>Sign in to access your event tickets</p>
+
+        <!-- Google OAuth Login Button -->
+        <a href="{% provider_login_url 'google' %}" class="btn-google">
+            Sign in with Google
+        </a>
+
+        <div class="footer-text">
+            Don't have an account? <a href="{% url 'account_signup' %}">Sign up</a>
+        </div>
+    </div>
+
+</body>
+</html>
