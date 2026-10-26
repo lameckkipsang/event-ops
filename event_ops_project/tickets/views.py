@@ -109,7 +109,7 @@ class CheckoutInitiateView(APIView):
         return Response({
             "message": "STK Push initiated successfully",
             "details": {
-                "ticket_tier": tier.name,
+                "ticket_tier": tier.ticket_type,
                 "quantity": quantity,
                 "total_amount": total_amount,
                 "phone_number": phone_number
