@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import Ticket, TicketTier
-from .serializers import TicketSerializer, TicketCheckInSerializer
+from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer
 # Create your views here.
 
 class TicketPurchaseView(APIView):
@@ -60,4 +60,13 @@ class TicketCheckInView(APIView):
         ticket.save()
         
         serializer = TicketSerializer(ticket)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class TicketTierListView(APIView):
+    permission_classes = [permissions.AllowAny] # Anyone can browse ticket tiers
+
+    def get(self, request):
+        # Filter only tiers that still have stock available
+        tiers = TicketTier.objects.filter(quantity_available__gt=0)
+        serializer = TicketTierSerializer(tiers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
