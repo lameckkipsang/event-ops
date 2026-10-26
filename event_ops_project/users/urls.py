@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register(r'accounts', UserViewSet, basename='user')
 
 urlpatterns = [
+    path('accounts/profile/', UserProfileView.as_view(), name='user-profile'),
     path('', include(router.urls)),
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -16,5 +17,5 @@ urlpatterns = [
     path('auth/google/', GoogleLogin.as_view(), name='rest_google_login'),
     path('login/', LoginView.as_view(), name='login'),
     path('signup/', SignupView.as_view(), name='signup'),
-    path('profile/', UserProfileView.as_view(), name='user-profile'),
+    
 ]
