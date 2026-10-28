@@ -1,4 +1,4 @@
-# EventOps — Event Management, Ticketing & Escrow Marketplace
+# EventOps - Event Management, Ticketing & Escrow Marketplace
 
 **EventOps** is a comprehensive event management, ticketing, and vendor marketplace platform designed to eliminate ticket fraud, streamline vendor hiring, and secure financial transactions using built-in M-Pesa escrow protection.
 
