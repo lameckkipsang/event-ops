@@ -105,9 +105,11 @@ class MpesaCallbackView(APIView):
 
         return Response({"ResultCode": 0, "ResultDesc": "Success"})
 
+
 class ReleaseEscrowView(APIView):
     """
     Endpoint to release held escrow funds to the vendor upon event/job completion.
+    Fetches vendor account phone number automatically for disbursement.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -123,6 +125,27 @@ class ReleaseEscrowView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Retrieve vendor linked to this booking/transaction
+            booking = transaction.booking
+            vendor_user = None
+
+            # Look up vendor through booking relationships
+            if hasattr(booking, 'vendor') and hasattr(booking.vendor, 'user'):
+                vendor_user = booking.vendor.user
+            elif hasattr(booking, 'package') and hasattr(booking.package, 'vendor'):
+                vendor_user = booking.package.vendor
+
+            # Retrieve vendor phone number from user account or profile
+            vendor_phone = None
+            if vendor_user:
+                vendor_phone = getattr(vendor_user, 'phone_number', None) or getattr(getattr(vendor_user, 'profile', None), 'phone_number', None)
+
+            if not vendor_phone:
+                return Response(
+                    {"error": "Vendor account does not have a registered phone number for payout."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Mark escrow as released
             transaction.escrow_status = 'RELEASED'
             transaction.save()
@@ -131,7 +154,8 @@ class ReleaseEscrowView(APIView):
                 {
                     "message": "Escrow released successfully. Vendor payout cleared.",
                     "transaction_id": transaction.id,
-                    "escrow_status": transaction.escrow_status
+                    "escrow_status": transaction.escrow_status,
+                    "disbursed_to_phone": vendor_phone
                 },
                 status=status.HTTP_200_OK
             )
@@ -146,6 +170,7 @@ class ReleaseEscrowView(APIView):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
 class TransactionHistoryListView(generics.ListAPIView):
     """
