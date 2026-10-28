@@ -154,3 +154,23 @@ class CheckoutInitiateView(APIView):
                 "error": "M-Pesa STK push failed",
                 "details": stk_data
             }, status=status.HTTP_400_BAD_REQUEST)
+
+class OrganizerTicketListView(APIView):
+    """
+    Allows an organizer to view a list of all tickets purchased 
+    by attendees for their specific events.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # If user is staff/admin, let them see all tickets
+        if user.is_staff:
+            tickets = Ticket.objects.all().order_by('-purchased_at')
+        else:
+            # Filter tickets where the event belongs to the logged-in organizer
+            tickets = Ticket.objects.filter(event__organizer=user).order_by('-purchased_at')
+            
+        serializer = TicketSerializer(tickets, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
