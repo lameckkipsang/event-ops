@@ -25,3 +25,7 @@ class EventViewSet(viewsets.ModelViewSet):
 class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all().order_by('-created_at')
     serializer_class = EventSerializer
+
+    def perform_create(self, serializer):
+        # Automatically saves the currently authenticated user as the organizer
+        serializer.save(organizer=self.request.user)
