@@ -1,11 +1,19 @@
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
 
 function App() {
   return (
-    <div className="min-h-screen bg-zinc-900 text-emerald-400 flex items-center justify-center">
-      <h1 className="text-3xl font-bold tracking-wide">EventOps UI is Live 🔥</h1>
-    </div>
-  )
+    <Router>
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        <Navbar />
+        <main className="container mx-auto px-4 py-6">
+          <Routes>
+            <Route path="/" element={<div className="text-center py-10 font-bold text-xl">Welcome to EventOps</div>} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;
