@@ -11,7 +11,7 @@ export default function Home() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/api/events/')
+    api.get('/events/')
       .then((response) => {
         setEvents(response.data);
       })
