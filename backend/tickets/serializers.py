@@ -59,3 +59,11 @@ class TicketPurchaseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"tier": "This ticket tier is sold out."})
 
         return attrs
+
+class EventSerializer(serializers.ModelSerializer):
+    # This exposes the related ticket_tiers array in the GET /api/events response
+    ticket_tiers = TicketTierSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Event
+        fields = '__all__'    

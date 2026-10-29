@@ -5,9 +5,12 @@ from django.conf import settings
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status, permissions, generics
 from .models import Ticket, TicketTier
+from events.models import Event
 from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer
+from tickets.serializers import EventSerializer
+
 # Create your views here.
 
 class TicketPurchaseView(APIView):
@@ -174,3 +177,7 @@ class OrganizerTicketListView(APIView):
             
         serializer = TicketSerializer(tickets, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class EventListView(generics.ListCreateAPIView):
+    queryset = Event.objects.all().order_by('-created_at')
+    serializer_class = EventSerializer
