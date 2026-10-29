@@ -1,7 +1,7 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, generics
 from .models import Event
 from .serializers import EventSerializer
-
+from tickets.serializers import EventSerializer
 # Create your views here.
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -21,3 +21,7 @@ class EventViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated(), IsOwnerOrReadOnly()]
         return [permissions.AllowAny()]
+
+class EventListView(generics.ListCreateAPIView):
+    queryset = Event.objects.all().order_by('-created_at')
+    serializer_class = EventSerializer
