@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Ticket } from 'lucide-react';
 
 export default function EventCard({ event }) {
-  if (!event) return null;
-
+  // Find the lowest ticket tier price, or default to null
+  const startingPrice = event.ticket_tiers && event.ticket_tiers.length > 0
+    ? Math.min(...event.ticket_tiers.map(tier => parseFloat(tier.price)))
+    : null;
   return (
     <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm hover:border-orange-500/50 transition-all group flex flex-col justify-between">
       <div>
