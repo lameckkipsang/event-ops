@@ -8,8 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions, generics
 from .models import Ticket, TicketTier
 from events.models import Event
-from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer
-from tickets.serializers import EventSerializer
+from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer, EventSerializer
 
 # Create your views here.
 
