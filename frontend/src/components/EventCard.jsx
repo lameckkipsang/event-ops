@@ -48,7 +48,7 @@ export default function EventCard({ event }) {
         <div>
           <span className="text-xs text-emerald-300/60 block">Price</span>
           <span className="text-lg font-extrabold text-white">
-            {event.price ? `KES ${event.price}` : 'Free'}
+            {startingPrice ? `KES ${startingPrice}` : 'Free'}
           </span>
         </div>
 
