@@ -101,6 +101,22 @@ export default function Home() {
 
         </div>
       </section>
+      {/* Verified Vendor Marketplace Card in Home.jsx */}
+      <Link 
+        to="/marketplace" 
+        className="bg-emerald-900/60 border border-emerald-800/80 p-7 rounded-2xl shadow-lg backdrop-blur-sm space-y-4 hover:border-orange-500/50 transition-all transform hover:-translate-y-1 block group"
+      >
+        <div className="w-12 h-12 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-xl flex items-center justify-center font-bold group-hover:bg-orange-500 group-hover:text-white transition-colors">
+          <Calendar className="w-6 h-6" />
+        </div>
+        <h3 className="font-bold text-white text-xl flex items-center justify-between">
+          <span>Verified Vendor Marketplace</span>
+          <ArrowRight className="w-5 h-5 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </h3>
+        <p className="text-sm text-emerald-200/80 leading-relaxed">
+          Hire vetted sound engineers, DJs, caterers, and venues directly with transparent pricing and review histories.
+        </p>
+      </Link>
 
       {/* Featured Events Listing */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">

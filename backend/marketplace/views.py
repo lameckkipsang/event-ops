@@ -27,6 +27,7 @@ class ServiceCategoryViewSet(viewsets.ModelViewSet):
 class VendorPackageViewSet(viewsets.ModelViewSet):
     queryset = VendorPackage.objects.all().order_by('-created_at')
     serializer_class = VendorPackageSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
