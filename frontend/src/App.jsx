@@ -4,6 +4,8 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Events from './pages/Events';
 import VendorMarketplace from './pages/VendorMarketplace';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/events" element={<Events />} />
             <Route path="/marketplace" element={<VendorMarketplace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
           </Routes>
         </main>
         <Footer />
