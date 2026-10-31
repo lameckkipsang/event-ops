@@ -22,20 +22,18 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await api.post('auth/login/', formData);
+      // Send 'email' and 'password' to match CustomTokenObtainPairSerializer
+      const response = await api.post('auth/login/', {
+        email: formData.email, 
+        password: formData.password,
+      });
       
-      // Store tokens or user session data
-      if (response.data.access) {
-        localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh);
-      } else if (response.data.key) {
-        localStorage.setItem('token', response.data.key);
-      }
-
+      localStorage.setItem('access_token', response.data.access);
+      localStorage.setItem('refresh_token', response.data.refresh);
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.non_field_errors?.[0] || 'Invalid credentials. Please try again.');
+      setError('Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -59,14 +57,14 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-emerald-300 mb-1.5">Email or Username</label>
+          <label className="block text-xs font-semibold text-emerald-300 mb-1.5">Email Address</label>
           <div className="relative">
             <Mail className="w-4 h-4 text-emerald-400 absolute left-3 top-3.5" />
             <input
-              type="text"
-              name="login"
+              type="email"
+              name="email"
               required
-              value={formData.login}
+              value={formData.email}
               onChange={handleChange}
               placeholder="john@example.com"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
