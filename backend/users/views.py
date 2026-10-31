@@ -9,6 +9,7 @@ from .serializers import UserRegisterSerializer, UserProfileSerializer, CustomTo
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 
@@ -20,9 +21,12 @@ class SignupView(View):
     def get(self, request):
         return render(request, 'signup.html')
 
-class UserProfileView(View):
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        return render(request, 'profile.html', {'user': request.user})
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data)
 
 User = get_user_model() #Assigns the active custom user model to the User variable
 
