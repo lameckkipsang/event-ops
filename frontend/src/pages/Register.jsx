@@ -59,7 +59,7 @@ export default function Register() {
               required
               value={formData.username}
               onChange={handleChange}
-              placeholder="johndoe"
+              placeholder="robin"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
@@ -75,7 +75,7 @@ export default function Register() {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="john@example.com"
+              placeholder="robin@gmail.com"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
