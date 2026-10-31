@@ -6,7 +6,7 @@ import api from '../services/api';
 export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    login: '', 
+    email: '', 
     password: '',
   });
   const [loading, setLoading] = useState(false);

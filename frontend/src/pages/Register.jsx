@@ -1,7 +1,37 @@
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import api from '../services/api';
 
 export default function Register() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.post('accounts/', formData);
+    navigate('/login');
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError(err.response?.data?.detail || 'Failed to register. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white">
       <div className="text-center mb-8">
@@ -12,15 +42,24 @@ export default function Register() {
         <p className="text-emerald-200/70 text-sm mt-1">Join EventOps to book tickets and hire vendors</p>
       </div>
 
-      <form className="space-y-4">
+      {error && (
+        <div className="mb-6 p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-xs text-center">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-emerald-300 mb-1.5">Username</label>
           <div className="relative">
             <User className="w-4 h-4 text-emerald-400 absolute left-3 top-3.5" />
             <input
               type="text"
+              name="username"
               required
-              placeholder="robinhood"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="johndoe"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
@@ -32,8 +71,11 @@ export default function Register() {
             <Mail className="w-4 h-4 text-emerald-400 absolute left-3 top-3.5" />
             <input
               type="email"
+              name="email"
               required
-              placeholder="robin@gmail.com"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="john@example.com"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
@@ -45,7 +87,10 @@ export default function Register() {
             <Lock className="w-4 h-4 text-emerald-400 absolute left-3 top-3.5" />
             <input
               type="password"
+              name="password"
               required
+              value={formData.password}
+              onChange={handleChange}
               placeholder="••••••••"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
@@ -54,9 +99,10 @@ export default function Register() {
 
         <button
           type="submit"
+          disabled={loading}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-6"
         >
-          Register
+          {loading ? 'Creating Account...' : 'Register'}
           <ArrowRight className="w-4 h-4" />
         </button>
       </form>
