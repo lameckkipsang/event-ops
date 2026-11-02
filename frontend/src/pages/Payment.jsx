@@ -42,7 +42,7 @@ export default function Payment() {
       await api.post('payments/stk-push/', {
         phone_number: phoneNumber,
         amount: item.price || item.cost,
-        item_id: item.id,
+        booking_id: item.id,
         item_type: type || 'service',
       });
 
