@@ -38,14 +38,18 @@ export default function Payment() {
     setLoading(true);
     setError('');
 
+    // Format phone number to 254XXXXXXXXX
+    let formattedPhone = phoneNumber.trim();
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.slice(1);
+    }
+
     try {
       await api.post('finance/stk-push/', {
-        phone_number: phoneNumber,
-        amount: item.price || item.cost,
+        phone_number: formattedPhone,
         booking_id: item.id,
-        item_type: type || 'service',
+        amount: item.price,
       });
-
       setPaymentSuccess(true);
     } catch (err) {
       console.error('Payment initiation error:', err);
