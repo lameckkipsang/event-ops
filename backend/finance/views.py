@@ -27,11 +27,23 @@ class InitiateSTKPushView(APIView):
         phone_number = serializer.validated_data['phone_number']
 
         try:
+            # Try finding an existing booking request
             booking_request = BookingRequest.objects.get(id=booking_id, organizer=request.user)
         except BookingRequest.DoesNotExist:
-            return Response({"error": "Booking request not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
+            # If booking_id is actually a Package ID, auto-create a BookingRequest
+            from marketplace.models import VendorPackage
+            try:
+                package = VendorPackage.objects.get(id=booking_id)
+                booking_request = BookingRequest.objects.create(
+                    organizer=request.user,
+                    package=package,
+                    status='PENDING'
+                )
+            except VendorPackage.DoesNotExist:
+                return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        payment_amount = booking_request.package.price
+        # Read amount sent from frontend if present, otherwise fall back to package price
+        payment_amount = request.data.get('amount') or booking_request.package.price
         
         callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
 
