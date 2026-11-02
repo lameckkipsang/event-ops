@@ -39,7 +39,7 @@ export default function Payment() {
     setError('');
 
     try {
-      await api.post('payments/stk-push/', {
+      await api.post('finance/stk-push/', {
         phone_number: phoneNumber,
         amount: item.price || item.cost,
         booking_id: item.id,

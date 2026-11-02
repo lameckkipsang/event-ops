@@ -7,11 +7,12 @@ import VendorMarketplace from './pages/VendorMarketplace';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Payment from './pages/Payment'; 
 
 export default function App() {
   return (
     <Router>
-      <div className="min-h-screen flex flex-col bg-emerald-950 text-white font-sans selection:bg-orange-500 selection:text-white">
+      <div className="min-h-screen flex flex-col bg-emerald-950 text-white font-sans selection:bg-orange-500">
         <Navbar />
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Routes>
@@ -20,7 +21,8 @@ export default function App() {
             <Route path="/marketplace" element={<VendorMarketplace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<Profile />} /> 
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/payment" element={<Payment />} /> 
           </Routes>
         </main>
         <Footer />
