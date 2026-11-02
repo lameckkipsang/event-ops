@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Store, Filter } from 'lucide-react';
 import { marketplaceService } from '../services/marketplaceApi';
 
 export default function VendorMarketplace() {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedTier, setSelectedTier] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Fetch categories on mount
+  // Fetch categories
   useEffect(() => {
     marketplaceService.getCategories()
       .then(data => setCategories(data))
@@ -33,6 +35,21 @@ export default function VendorMarketplace() {
         setLoading(false);
       });
   }, [selectedCategory, selectedTier]);
+
+  //handles route to payment with package state
+  const handleBookService = (pkg) => {
+    navigate('/payment', {
+      state: {
+        item: {
+          id: pkg.id,
+          title: pkg.title,
+          price: pkg.price,
+          description: pkg.description,
+        },
+        type: 'vendor_package',
+      },
+    });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-white">
@@ -127,8 +144,8 @@ export default function VendorMarketplace() {
                 </div>
 
                 <button 
-                  onClick={() => alert(`Booking modal hook for package: ${pkg.title}`)}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                  onClick={() => handleBookService(pkg)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-orange-500/20"
                 >
                   Book Service
                 </button>
