@@ -1,65 +1,135 @@
 import React from 'react';
 import { Calendar, Receipt, Clock, CheckCircle, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function ReceiptCard({ tx }) {
-  const handlePrint = () => {
+  const handleDownloadPDF = async () => {
     const element = document.getElementById(`receipt-card-${tx.id}`);
-    if (element) {
-      element.classList.add('is-printing');
-    }
-    window.print();
-    if (element) {
-      element.classList.remove('is-printing');
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#022c22',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 190;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 10;
+
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      pdf.save(`EventOps-Receipt-${tx.mpesa_receipt_number || tx.id}.pdf`);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
     }
   };
 
   return (
     <div
       id={`receipt-card-${tx.id}`}
-      className="receipt-card bg-emerald-950/80 border border-emerald-800/80 rounded-2xl p-6 shadow-xl relative flex flex-col justify-between"
+      style={{
+        backgroundColor: '#022c22',
+        borderColor: '#065f46',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        color: '#ffffff',
+        borderWidth: '1px',
+        borderStyle: 'solid'
+      }}
     >
       <div>
-        <div className="flex justify-between items-start mb-3">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950 px-2.5 py-0.5 rounded border border-orange-500/30">
+            <span
+              style={{
+                backgroundColor: '#431407',
+                color: '#fb923c',
+                borderColor: 'rgba(249, 115, 22, 0.3)',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                padding: '2px 10px',
+                borderRadius: '0.25rem',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                display: 'inline-block'
+              }}
+            >
               {tx.mpesa_receipt_number ? 'Paid Ticket' : 'Pending Payment'}
             </span>
-            <h3 className="text-lg font-bold text-white mt-2">
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#ffffff', marginTop: '0.5rem' }}>
               {tx.booking_details?.package_name || tx.booking_details?.event_title || 'Event Ticket'}
             </h3>
           </div>
-          <span className="text-lg font-extrabold text-orange-400">
+          <span style={{ fontSize: '1.125rem', fontWeight: 'extrabold', color: '#fb923c' }}>
             KES {parseFloat(tx.amount).toLocaleString()}
           </span>
         </div>
 
-        <div className="text-xs text-emerald-300/70 space-y-1.5 py-3 border-y border-emerald-900">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-400" />
+        <div
+          style={{
+            fontSize: '0.75rem',
+            color: '#6ee7b7',
+            paddingTop: '0.75rem',
+            paddingBottom: '0.75rem',
+            borderTop: '1px solid #064e3b',
+            borderBottom: '1px solid #064e3b',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.375rem'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Calendar style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
             <span>Date: {new Date(tx.created_at).toLocaleDateString()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-emerald-400" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Receipt style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
             <span>Receipt No: {tx.mpesa_receipt_number || 'Processing...'}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-emerald-400" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Clock style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
             <span>
-              Status: <strong className="text-emerald-200">{tx.status}</strong> (Escrow: {tx.escrow_status})
+              Status: <strong style={{ color: '#a7f3d0' }}>{tx.status}</strong> (Escrow: {tx.escrow_status})
             </span>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-[11px] text-emerald-400/80 flex items-center gap-1">
-          <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Verified Purchase
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
+        <span style={{ fontSize: '11px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <CheckCircle style={{ width: '14px', height: '14px', color: '#34d399' }} /> Verified Purchase
         </span>
         <button
-          onClick={handlePrint}
-          className="px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors no-print"
+          onClick={handleDownloadPDF}
+          style={{
+            backgroundColor: '#f97316',
+            color: '#ffffff',
+            padding: '8px 14px',
+            borderRadius: '0.75rem',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
         >
-          <Download className="w-3.5 h-3.5" /> Print Receipt
+          <Download style={{ width: '16px', height: '16px' }} /> Download PDF
         </button>
       </div>
     </div>
