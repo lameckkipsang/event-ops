@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt, CheckCircle, Clock, Calendar, Download } from 'lucide-react';
 import api from '../services/api';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialTab = location.state?.activeTab || 'profile';
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
@@ -43,6 +49,16 @@ export default function Profile() {
 
     fetchUserProfile();
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'tickets_receipts') {
+      setTxLoading(true);
+      api.get('/finance/transactions/')
+        .then((res) => setTransactions(res.data))
+        .catch((err) => console.error('Failed to fetch transactions:', err))
+        .finally(() => setTxLoading(false));
+    }
+  }, [activeTab]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -100,188 +116,285 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white">
+    <div className="max-w-4xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white space-y-6">
+      
+      {/* Navigation Tabs */}
+      <div className="flex gap-4 border-b border-emerald-800/80 pb-3">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+            activeTab === 'profile'
+              ? 'bg-emerald-800 text-white'
+              : 'text-emerald-300/70 hover:text-white'
+          }`}
+        >
+          My Profile
+        </button>
+        <button
+          onClick={() => setActiveTab('tickets_receipts')}
+          className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all ${
+            activeTab === 'tickets_receipts'
+              ? 'bg-orange-500 text-white font-bold shadow-lg shadow-orange-500/20'
+              : 'text-emerald-300/70 hover:text-white'
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          Receipts & My Tickets
+        </button>
+      </div>
+
       {error && (
-        <div className="mb-6 p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-xs text-center">
+        <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-xs text-center">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-6 p-3 bg-emerald-950/60 border border-emerald-700/80 rounded-xl text-emerald-300 text-xs text-center">
+        <div className="p-3 bg-emerald-950/60 border border-emerald-700/80 rounded-xl text-emerald-300 text-xs text-center">
           {success}
         </div>
       )}
 
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-8 border-b border-emerald-800/80">
-        <div className="flex items-center gap-6 text-center sm:text-left">
-          <div className="relative group">
-            {previewImage || user?.profile_picture ? (
-              <img
-                src={previewImage || user.profile_picture}
-                alt="Profile Preview"
-                className="w-20 h-20 rounded-2xl object-cover border border-orange-500/30 shadow-lg"
-              />
-            ) : (
-              <div className="w-20 h-20 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-lg">
-                {user?.username ? user.username[0].toUpperCase() : <User className="w-10 h-10" />}
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{user?.username || 'EventOps User'}</h1>
-            <p className="text-emerald-300/70 text-sm">{user?.email}</p>
-            <span className="inline-block mt-2 px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 text-xs font-semibold rounded-full capitalize">
-              Role: {user?.role || 'Attendee'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-orange-500/20"
-            >
-              <Edit2 className="w-4 h-4" />
-              Edit Profile
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setIsEditing(false);
-                setSelectedFile(null);
-                setPreviewImage(null);
-              }}
-              className="flex items-center gap-2 bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            >
-              <X className="w-4 h-4" />
-              Cancel
-            </button>
-          )}
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Details Form */}
-      {!isEditing ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
-          <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
-            <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
-              <Mail className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-emerald-400 font-medium">Email Address</p>
-              <p className="text-sm font-semibold text-white mt-0.5">{user?.email || 'Not provided'}</p>
-            </div>
-          </div>
-
-          <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
-            <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
-              <Phone className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-emerald-400 font-medium">Phone Number</p>
-              <p className="text-sm font-semibold text-white mt-0.5">{user?.phone_number || 'Not provided'}</p>
-            </div>
-          </div>
-
-          <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
-            <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
-              <Building className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-emerald-400 font-medium">Company Name</p>
-              <p className="text-sm font-semibold text-white mt-0.5">{user?.company_name || 'Independent / None'}</p>
-            </div>
-          </div>
-
-          <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
-            <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-emerald-400 font-medium">Account Status</p>
-              <p className="text-sm font-semibold text-white mt-0.5">
-                {user?.is_verified ? 'Verified Account' : 'Standard Account'}
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleUpdate} className="space-y-6 mt-8">
-          {/* Profile Picture Upload Input */}
-          <div className="p-6 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-2xl overflow-hidden border border-orange-500/30 bg-emerald-900 flex items-center justify-center">
+      {activeTab === 'profile' ? (
+        <>
+          {/* Header section */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-8 border-b border-emerald-800/80">
+            <div className="flex items-center gap-6 text-center sm:text-left">
+              <div className="relative group">
                 {previewImage || user?.profile_picture ? (
-                  <img src={previewImage || user.profile_picture} alt="Upload Preview" className="w-full h-full object-cover" />
+                  <img
+                    src={previewImage || user.profile_picture}
+                    alt="Profile Preview"
+                    className="w-20 h-20 rounded-2xl object-cover border border-orange-500/30 shadow-lg"
+                  />
                 ) : (
-                  <Camera className="w-8 h-8 text-emerald-400" />
+                  <div className="w-20 h-20 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-lg">
+                    {user?.username ? user.username[0].toUpperCase() : <User className="w-10 h-10" />}
+                  </div>
                 )}
               </div>
-            </div>
-            <div className="flex-1 w-full text-center sm:text-left">
-              <label className="block text-xs font-semibold text-emerald-300 mb-2">Change Profile Picture</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="w-full text-xs text-emerald-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 cursor-pointer"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-semibold text-emerald-300 mb-2">Phone Number</label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  name="phone_number"
-                  value={formData.phone_number}
-                  onChange={handleChange}
-                  placeholder="+254712345678"
-                  className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                />
+              <div>
+                <h1 className="text-2xl font-bold">{user?.username || 'EventOps User'}</h1>
+                <p className="text-emerald-300/70 text-sm">{user?.email}</p>
+                <span className="inline-block mt-2 px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 text-xs font-semibold rounded-full capitalize">
+                  Role: {user?.role || 'Attendee'}
+                </span>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-emerald-300 mb-2">Company Name</label>
-              <div className="relative">
-                <Building className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  placeholder="EventOps Corp"
-                  className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                />
-              </div>
+            <div className="flex items-center gap-3">
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-orange-500/20"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit Profile
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setSelectedFile(null);
+                    setPreviewImage(null);
+                  }}
+                  className="flex items-center gap-2 bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="submit"
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20"
-            >
-              <Save className="w-4 h-4" />
-              Save Changes
-            </button>
-          </div>
-        </form>
+          {/* Details Form */}
+          {!isEditing ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
+              <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-400 font-medium">Email Address</p>
+                  <p className="text-sm font-semibold text-white mt-0.5">{user?.email || 'Not provided'}</p>
+                </div>
+              </div>
+
+              <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-400 font-medium">Phone Number</p>
+                  <p className="text-sm font-semibold text-white mt-0.5">{user?.phone_number || 'Not provided'}</p>
+                </div>
+              </div>
+
+              <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-400 font-medium">Company Name</p>
+                  <p className="text-sm font-semibold text-white mt-0.5">{user?.company_name || 'Independent / None'}</p>
+                </div>
+              </div>
+
+              <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-900/80 rounded-xl flex items-center justify-center text-emerald-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-400 font-medium">Account Status</p>
+                  <p className="text-sm font-semibold text-white mt-0.5">
+                    {user?.is_verified ? 'Verified Account' : 'Standard Account'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleUpdate} className="space-y-6 pt-4">
+              <div className="p-6 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden border border-orange-500/30 bg-emerald-900 flex items-center justify-center">
+                    {previewImage || user?.profile_picture ? (
+                      <img src={previewImage || user.profile_picture} alt="Upload Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-8 h-8 text-emerald-400" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 w-full text-center sm:text-left">
+                  <label className="block text-xs font-semibold text-emerald-300 mb-2">Change Profile Picture</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full text-xs text-emerald-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-2">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      name="phone_number"
+                      value={formData.phone_number}
+                      onChange={handleChange}
+                      placeholder="+254712345678"
+                      className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-2">Company Name</label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleChange}
+                      placeholder="EventOps Corp"
+                      className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          )}
+        </>
+      ) : (
+        /* Receipts & My Tickets Section */
+        <div className="space-y-6 pt-2">
+          <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2">
+            <Ticket className="w-6 h-6 text-orange-500" />
+            Purchased Tickets & Payment History
+          </h2>
+
+          {txLoading ? (
+            <div className="p-8 text-center text-emerald-300 text-sm">Loading transactions...</div>
+          ) : transactions.length === 0 ? (
+            <div className="p-8 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm">
+              No tickets or transaction receipts found yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="bg-emerald-950/80 border border-emerald-800/80 rounded-2xl p-5 shadow-xl relative flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950 px-2.5 py-0.5 rounded border border-orange-500/30">
+                          {tx.mpesa_receipt_number ? 'Paid Ticket' : 'Pending Payment'}
+                        </span>
+                        <h3 className="text-lg font-bold text-white mt-2">
+                          {tx.booking_details?.package_name || tx.booking_details?.event_title || 'Event Ticket'}
+                        </h3>
+                      </div>
+                      <span className="text-lg font-extrabold text-orange-400">
+                        KES {parseFloat(tx.amount).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-emerald-300/70 space-y-1.5 py-3 border-y border-emerald-900">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-emerald-400" />
+                        <span>Date: {new Date(tx.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-emerald-400" />
+                        <span>Receipt No: {tx.mpesa_receipt_number || 'Processing...'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-emerald-400" />
+                        <span>Status: <strong className="text-emerald-200">{tx.status}</strong> (Escrow: {tx.escrow_status})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[11px] text-emerald-400/80 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Verified Purchase
+                    </span>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Print Receipt
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
