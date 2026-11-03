@@ -1,8 +1,6 @@
 from django.db import models
 from django.conf import settings
 
-# Create your models here.
-
 class Transaction(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
@@ -19,7 +17,9 @@ class Transaction(models.Model):
     )
 
     organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payments')
-    booking = models.OneToOneField('marketplace.BookingRequest', on_delete=models.CASCADE, related_name='transaction')
+    booking = models.OneToOneField('marketplace.BookingRequest', on_delete=models.CASCADE, related_name='transaction', blank=True, null=True)
+    ticket = models.ForeignKey('events.Ticket', on_delete=models.SET_NULL, related_name='transactions', blank=True, null=True)
+    
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     phone_number = models.CharField(max_length=15)
     
