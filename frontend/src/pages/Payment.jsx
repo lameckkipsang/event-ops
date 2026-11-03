@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt } from 'lucide-react';
 import api from '../services/api';
 
 export default function Payment() {
@@ -99,10 +99,15 @@ export default function Payment() {
             Please check your phone ({phoneNumber}) and enter your M-Pesa PIN to complete payment.
           </p>
           <button
-            onClick={() => navigate('/profile')}
-            className="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all"
+            onClick={() =>
+              navigate('/profile', {
+                state: { activeTab: 'tickets_receipts', recentItem: item },
+              })
+            }
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
           >
-            Go to My Account
+            <Receipt className="w-4 h-4" />
+            View Receipt & My Tickets
           </button>
         </div>
       ) : (
