@@ -54,7 +54,7 @@ export default function EventCard({ event, onCheckTiers }) {
 
         <button
           type="button"
-          onClick={() => onCheckTiers(event)}
+          onClick={() => onCheckTiers && onCheckTiers(event)}
           className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center space-x-1.5"
         >
           <Ticket className="w-4 h-4" />
