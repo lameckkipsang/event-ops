@@ -4,18 +4,14 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
+from events.models import TicketTier, Ticket
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import InitiatePaymentSerializer, TransactionSerializer
 from rest_framework import generics
-
-# Create your views here.
+import os
 
 class InitiateSTKPushView(APIView):
-    """
-    Initiate Payment (STK Push)
-    Triggered when an event organizer submits payment for a vendor booking.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -23,34 +19,48 @@ class InitiateSTKPushView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        booking_id = serializer.validated_data['booking_id']
+        item_id = serializer.validated_data['booking_id']
         phone_number = serializer.validated_data['phone_number']
+        is_event_ticket = request.data.get('type') == 'event_ticket'
 
-        try:
-            # Try finding an existing booking request
-            booking_request = BookingRequest.objects.get(id=booking_id, organizer=request.user)
-        except BookingRequest.DoesNotExist:
-            # If booking_id is actually a Package ID, auto-create a BookingRequest
+        booking_request = None
+        ticket_instance = None
+        payment_amount = int(float(request.data.get('amount', 1)))
+
+        if is_event_ticket:
             try:
-                package = VendorPackage.objects.get(id=booking_id)
-                booking_request = BookingRequest.objects.create(
-                    organizer=request.user,
-                    package=package,
-                    status='PENDING'
+                tier = TicketTier.objects.get(id=item_id)
+                payment_amount = int(float(tier.price))
+                ticket_instance = Ticket.objects.create(
+                    event=tier.event,
+                    tier=tier,
+                    attendee=request.user,
+                    ticket_code=f"TCK-{os.urandom(3).hex().upper()}"
                 )
-            except VendorPackage.DoesNotExist:
-                return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
+            except TicketTier.DoesNotExist:
+                return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                booking_request = BookingRequest.objects.get(id=item_id, organizer=request.user)
+                payment_amount = int(float(request.data.get('amount') or booking_request.package.price))
+            except BookingRequest.DoesNotExist:
+                try:
+                    package = VendorPackage.objects.get(id=item_id)
+                    booking_request = BookingRequest.objects.create(
+                        organizer=request.user,
+                        package=package,
+                        status='PENDING'
+                    )
+                except VendorPackage.DoesNotExist:
+                    return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Read amount sent from frontend if present, otherwise fall back to package price
-        payment_amount = int(float(request.data.get('amount') or booking_request.package.price))        
         callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
 
-        # Call function from daraja.py
         daraja_response = initiate_stk_push(
             phone_number=phone_number,
             amount=payment_amount,
             callback_url=callback_url,
-            reference_id=booking_request.id
+            reference_id=item_id
         )
 
         if daraja_response.get('ResponseCode') == '0':
@@ -58,12 +68,13 @@ class InitiateSTKPushView(APIView):
             merchant_request_id = daraja_response.get('MerchantRequestID')
 
             transaction, created = Transaction.objects.update_or_create(
-                booking=booking_request,
+                checkout_request_id=checkout_request_id,
                 defaults={
                     'organizer': request.user,
+                    'booking': booking_request,
+                    'ticket': ticket_instance,
                     'amount': payment_amount,
                     'phone_number': phone_number,
-                    'checkout_request_id': checkout_request_id,
                     'merchant_request_id': merchant_request_id,
                     'status': 'PENDING',
                     'escrow_status': 'HELD'
@@ -78,10 +89,6 @@ class InitiateSTKPushView(APIView):
 
 
 class MpesaCallbackView(APIView):
-    """
-    Handle M-Pesa Webhook Callback
-    Automatically called by Safaricom servers once the user enters their PIN.
-    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -117,76 +124,46 @@ class MpesaCallbackView(APIView):
 
 
 class ReleaseEscrowView(APIView):
-    """
-    Endpoint to release held escrow funds to the vendor upon event/job completion.
-    Fetches vendor account phone number automatically for disbursement.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, transaction_id):
         try:
-            # Retrieve the transaction record
             transaction = Transaction.objects.get(id=transaction_id)
-
-            # Ensure payment was completed and funds are currently held in escrow
             if transaction.status != 'COMPLETED' or transaction.escrow_status != 'HELD':
-                return Response(
-                    {"error": "Transaction is not eligible for escrow release."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "Transaction is not eligible for escrow release."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Retrieve vendor linked to this booking/transaction
             booking = transaction.booking
             vendor_user = None
+            if booking:
+                if hasattr(booking, 'vendor') and hasattr(booking.vendor, 'user'):
+                    vendor_user = booking.vendor.user
+                elif hasattr(booking, 'package') and hasattr(booking.package, 'vendor'):
+                    vendor_user = booking.package.vendor
 
-            # Look up vendor through booking relationships
-            if hasattr(booking, 'vendor') and hasattr(booking.vendor, 'user'):
-                vendor_user = booking.vendor.user
-            elif hasattr(booking, 'package') and hasattr(booking.package, 'vendor'):
-                vendor_user = booking.package.vendor
-
-            # Retrieve vendor phone number from user account or profile
             vendor_phone = None
             if vendor_user:
                 vendor_phone = getattr(vendor_user, 'phone_number', None) or getattr(getattr(vendor_user, 'profile', None), 'phone_number', None)
 
             if not vendor_phone:
-                return Response(
-                    {"error": "Vendor account does not have a registered phone number for payout."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "Vendor account does not have a registered phone number for payout."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Mark escrow as released
             transaction.escrow_status = 'RELEASED'
             transaction.save()
 
-            return Response(
-                {
-                    "message": "Escrow released successfully. Vendor payout cleared.",
-                    "transaction_id": transaction.id,
-                    "escrow_status": transaction.escrow_status,
-                    "disbursed_to_phone": vendor_phone
-                },
-                status=status.HTTP_200_OK
-            )
+            return Response({
+                "message": "Escrow released successfully. Vendor payout cleared.",
+                "transaction_id": transaction.id,
+                "escrow_status": transaction.escrow_status,
+                "disbursed_to_phone": vendor_phone
+            }, status=status.HTTP_200_OK)
 
         except Transaction.DoesNotExist:
-            return Response(
-                {"error": "Transaction record not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Transaction record not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TransactionHistoryListView(generics.ListAPIView):
-    """
-    Retrieve transaction and escrow history based on user role.
-    Organizers see their own payments, vendors see payments tied to their packages.
-    """
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
