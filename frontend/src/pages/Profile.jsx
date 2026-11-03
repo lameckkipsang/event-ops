@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt, CheckCircle, Clock, Calendar, Download } from 'lucide-react';
+import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt } from 'lucide-react';
 import api from '../services/api';
+import ReceiptCard from '../components/ReceiptCard';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -12,11 +13,9 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     phone_number: '',
@@ -52,11 +51,9 @@ export default function Profile() {
 
   useEffect(() => {
     if (activeTab === 'tickets_receipts') {
-      setTxLoading(true);
       api.get('/finance/transactions/')
         .then((res) => setTransactions(res.data))
-        .catch((err) => console.error('Failed to fetch transactions:', err))
-        .finally(() => setTxLoading(false));
+        .catch((err) => console.error('Failed to fetch transactions:', err));
     }
   }, [activeTab]);
 
@@ -119,7 +116,7 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white space-y-6">
       
       {/* Navigation Tabs */}
-      <div className="flex gap-4 border-b border-emerald-800/80 pb-3">
+      <div className="flex gap-4 border-b border-emerald-800/80 pb-3 no-print">
         <button
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
@@ -144,20 +141,20 @@ export default function Profile() {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-xs text-center">
+        <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-xs text-center no-print">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="p-3 bg-emerald-950/60 border border-emerald-700/80 rounded-xl text-emerald-300 text-xs text-center">
+        <div className="p-3 bg-emerald-950/60 border border-emerald-700/80 rounded-xl text-emerald-300 text-xs text-center no-print">
           {success}
         </div>
       )}
 
       {activeTab === 'profile' ? (
         <>
-          {/* Header section */}
+          {/* Profile Details Header */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-8 border-b border-emerald-800/80">
             <div className="flex items-center gap-6 text-center sm:text-left">
               <div className="relative group">
@@ -182,7 +179,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 no-print">
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -215,7 +212,6 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Details Form */}
           {!isEditing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
               <div className="p-5 bg-emerald-950/60 border border-emerald-800/60 rounded-2xl flex items-center gap-4">
@@ -330,67 +326,21 @@ export default function Profile() {
       ) : (
         /* Receipts & My Tickets Section */
         <div className="space-y-6 pt-2">
-          <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2">
+          <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2 no-print">
             <Ticket className="w-6 h-6 text-orange-500" />
             Purchased Tickets & Payment History
           </h2>
 
-          {txLoading ? (
+          {loading ? (
             <div className="p-8 text-center text-emerald-300 text-sm">Loading transactions...</div>
           ) : transactions.length === 0 ? (
             <div className="p-8 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm">
               No tickets or transaction receipts found yet.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 receipts-grid">
               {transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="bg-emerald-950/80 border border-emerald-800/80 rounded-2xl p-5 shadow-xl relative flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950 px-2.5 py-0.5 rounded border border-orange-500/30">
-                          {tx.mpesa_receipt_number ? 'Paid Ticket' : 'Pending Payment'}
-                        </span>
-                        <h3 className="text-lg font-bold text-white mt-2">
-                          {tx.booking_details?.package_name || tx.booking_details?.event_title || 'Event Ticket'}
-                        </h3>
-                      </div>
-                      <span className="text-lg font-extrabold text-orange-400">
-                        KES {parseFloat(tx.amount).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-emerald-300/70 space-y-1.5 py-3 border-y border-emerald-900">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-emerald-400" />
-                        <span>Date: {new Date(tx.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Receipt className="w-4 h-4 text-emerald-400" />
-                        <span>Receipt No: {tx.mpesa_receipt_number || 'Processing...'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-emerald-400" />
-                        <span>Status: <strong className="text-emerald-200">{tx.status}</strong> (Escrow: {tx.escrow_status})</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[11px] text-emerald-400/80 flex items-center gap-1">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Verified Purchase
-                    </span>
-                    <button
-                      onClick={() => window.print()}
-                      className="px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Print Receipt
-                    </button>
-                  </div>
-                </div>
+                <ReceiptCard key={tx.id} tx={tx} />
               ))}
             </div>
           )}
