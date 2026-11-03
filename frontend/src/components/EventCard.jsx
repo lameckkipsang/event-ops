@@ -1,13 +1,13 @@
-import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Ticket } from 'lucide-react';
 
-export default function EventCard({ event }) {
+export default function EventCard({ event, onCheckTiers }) {
   // Find the lowest ticket tier price, or default to null
   const startingPrice = event.ticket_tiers && event.ticket_tiers.length > 0
     ? Math.min(...event.ticket_tiers.map(tier => parseFloat(tier.price)))
     : null;
+
   return (
-    <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm hover:border-orange-500/50 transition-all group flex flex-col justify-between">
+    <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm group flex flex-col justify-between">
       <div>
         <div className="bg-emerald-950 p-4 relative border-b border-emerald-800/50">
           {event.category && (
@@ -15,7 +15,7 @@ export default function EventCard({ event }) {
               {event.category}
             </span>
           )}
-          <h3 className="mt-3 text-xl font-bold text-white group-hover:text-orange-400 transition-colors">
+          <h3 className="mt-3 text-xl font-bold text-white">
             {event.title}
           </h3>
         </div>
@@ -46,19 +46,20 @@ export default function EventCard({ event }) {
 
       <div className="p-5 pt-0 flex items-center justify-between border-t border-emerald-800/40 mt-4">
         <div>
-          <span className="text-xs text-emerald-300/60 block">Price</span>
+          <span className="text-xs text-emerald-300/60 block">Starting Price</span>
           <span className="text-lg font-extrabold text-white">
-            {startingPrice ? `KES ${startingPrice}` : 'Free'}
+            {startingPrice ? `KES ${startingPrice.toLocaleString()}` : 'Free'}
           </span>
         </div>
 
-        <Link
-          to={`/events/${event.id}`}
-          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center space-x-1.5"
+        <button
+          type="button"
+          onClick={() => onCheckTiers(event)}
+          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center space-x-1.5"
         >
           <Ticket className="w-4 h-4" />
-          <span>Get Ticket</span>
-        </Link>
+          <span>Check Ticket Tiers</span>
+        </button>
       </div>
     </div>
   );
