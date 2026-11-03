@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from .models import Transaction
-from marketplace.models import BookingRequest
+from marketplace.models import BookingRequest, VendorPackage
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import InitiatePaymentSerializer, TransactionSerializer
@@ -31,7 +31,6 @@ class InitiateSTKPushView(APIView):
             booking_request = BookingRequest.objects.get(id=booking_id, organizer=request.user)
         except BookingRequest.DoesNotExist:
             # If booking_id is actually a Package ID, auto-create a BookingRequest
-            from marketplace.models import VendorPackage
             try:
                 package = VendorPackage.objects.get(id=booking_id)
                 booking_request = BookingRequest.objects.create(
@@ -43,8 +42,7 @@ class InitiateSTKPushView(APIView):
                 return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # Read amount sent from frontend if present, otherwise fall back to package price
-        payment_amount = request.data.get('amount') or booking_request.package.price
-        
+        payment_amount = int(float(request.data.get('amount') or booking_request.package.price))        
         callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
 
         # Call function from daraja.py
