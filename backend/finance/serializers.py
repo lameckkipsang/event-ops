@@ -3,8 +3,11 @@ from .models import Transaction
 
 class TransactionSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
-    booking_title = serializers.ReadOnlyField(source='booking.package.title')
-    booking_tier = serializers.ReadOnlyField(source='booking.package.get_tier_display')
+    booking_title = serializers.ReadOnlyField(source='booking.package.title', default=None)
+    booking_tier = serializers.ReadOnlyField(source='booking.package.get_tier_display', default=None)
+    ticket_title = serializers.ReadOnlyField(source='ticket.tier.event.title', default=None)
+    ticket_type = serializers.ReadOnlyField(source='ticket.tier.ticket_type', default=None)
+
     class Meta:
         model = Transaction
         fields = (
@@ -14,6 +17,9 @@ class TransactionSerializer(serializers.ModelSerializer):
             'booking',
             'booking_title',
             'booking_tier',
+            'ticket',
+            'ticket_title',
+            'ticket_type',
             'amount',
             'phone_number',
             'checkout_request_id',
