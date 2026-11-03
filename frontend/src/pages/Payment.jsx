@@ -7,7 +7,7 @@ export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Extract item details passed via navigation state
+  // Extract item details and type passed via navigation state
   const { item, type } = location.state || {};
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -44,11 +44,15 @@ export default function Payment() {
       formattedPhone = '254' + formattedPhone.slice(1);
     }
 
+    // Determine payment type dynamically if not explicitly provided in navigation state
+    const paymentType = type || (item.tier_name || item.ticket_type || item.event ? 'event_ticket' : 'vendor_booking');
+
     try {
       await api.post('finance/stk-push/', {
         phone_number: formattedPhone,
         booking_id: item.id,
-        amount: item.price,
+        amount: item.price || item.cost,
+        type: paymentType,
       });
       setPaymentSuccess(true);
     } catch (err) {
