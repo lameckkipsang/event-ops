@@ -2,14 +2,14 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from django.utils.crypto import get_random_string
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
-from events.models import TicketTier, Ticket
+from tickets.models import TicketTier, Ticket
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import InitiatePaymentSerializer, TransactionSerializer
 from rest_framework import generics
-import os
 
 class InitiateSTKPushView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -21,13 +21,13 @@ class InitiateSTKPushView(APIView):
 
         item_id = serializer.validated_data['booking_id']
         phone_number = serializer.validated_data['phone_number']
-        is_event_ticket = request.data.get('type') == 'event_ticket'
+        payment_type = request.data.get('type')
 
         booking_request = None
         ticket_instance = None
         payment_amount = int(float(request.data.get('amount', 1)))
 
-        if is_event_ticket:
+        if payment_type == 'event_ticket':
             try:
                 tier = TicketTier.objects.get(id=item_id)
                 payment_amount = int(float(tier.price))
@@ -35,7 +35,7 @@ class InitiateSTKPushView(APIView):
                     event=tier.event,
                     tier=tier,
                     attendee=request.user,
-                    ticket_code=f"TCK-{os.urandom(3).hex().upper()}"
+                    ticket_code=f"TCK-{get_random_string(6).upper()}"
                 )
             except TicketTier.DoesNotExist:
                 return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -67,18 +67,17 @@ class InitiateSTKPushView(APIView):
             checkout_request_id = daraja_response.get('CheckoutRequestID')
             merchant_request_id = daraja_response.get('MerchantRequestID')
 
-            transaction, created = Transaction.objects.update_or_create(
+            # Safely create transaction record without update_or_create lookup mismatch
+            transaction = Transaction.objects.create(
+                organizer=request.user,
+                booking=booking_request,
+                ticket=ticket_instance,
+                amount=payment_amount,
+                phone_number=phone_number,
                 checkout_request_id=checkout_request_id,
-                defaults={
-                    'organizer': request.user,
-                    'booking': booking_request,
-                    'ticket': ticket_instance,
-                    'amount': payment_amount,
-                    'phone_number': phone_number,
-                    'merchant_request_id': merchant_request_id,
-                    'status': 'PENDING',
-                    'escrow_status': 'HELD'
-                }
+                merchant_request_id=merchant_request_id,
+                status='PENDING',
+                escrow_status='HELD'
             )
             return Response({
                 "message": "STK Push initiated successfully. Check your phone to complete payment.",
