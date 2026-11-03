@@ -38,3 +38,4 @@ class TransactionSerializer(serializers.ModelSerializer):
 class InitiatePaymentSerializer(serializers.Serializer):
     booking_id = serializers.IntegerField()
     phone_number = serializers.CharField(max_length=15)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
