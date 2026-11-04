@@ -21,6 +21,7 @@ export default function App() {
             <Route path="/events" element={<Events />} />
             <Route path="/marketplace" element={<VendorMarketplace />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+            <Route path="/security/check-in" element={<SecurityCheckIn />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
