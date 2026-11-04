@@ -41,16 +41,19 @@ class InitiateSTKPushView(APIView):
                 return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
         else:
             try:
+                # Try fetching an existing booking request for this user
                 booking_request = BookingRequest.objects.get(id=item_id, organizer=request.user)
                 payment_amount = int(float(request.data.get('amount') or booking_request.package.price))
             except BookingRequest.DoesNotExist:
                 try:
                     package = VendorPackage.objects.get(id=item_id)
-                    booking_request = BookingRequest.objects.create(
+                    # Use get_or_create to prevent duplicate booking constraint errors if a pending one exists
+                    booking_request, created = BookingRequest.objects.get_or_create(
                         organizer=request.user,
                         package=package,
-                        status='PENDING'
+                        defaults={'status': 'PENDING'}
                     )
+                    payment_amount = int(float(package.price))
                 except VendorPackage.DoesNotExist:
                     return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -60,24 +63,26 @@ class InitiateSTKPushView(APIView):
             phone_number=phone_number,
             amount=payment_amount,
             callback_url=callback_url,
-            reference_id=item_id
+            reference_id=booking_request.id if booking_request else item_id
         )
 
         if daraja_response.get('ResponseCode') == '0':
             checkout_request_id = daraja_response.get('CheckoutRequestID')
             merchant_request_id = daraja_response.get('MerchantRequestID')
 
-            # Safely create transaction record without update_or_create lookup mismatch
-            transaction = Transaction.objects.create(
-                organizer=request.user,
+            # Use update_or_create to gracefully handle retries on the same booking without crashing
+            transaction, created = Transaction.objects.update_or_create(
                 booking=booking_request,
-                ticket=ticket_instance,
-                amount=payment_amount,
-                phone_number=phone_number,
-                checkout_request_id=checkout_request_id,
-                merchant_request_id=merchant_request_id,
-                status='PENDING',
-                escrow_status='HELD'
+                defaults={
+                    'organizer': request.user,
+                    'ticket': ticket_instance,
+                    'amount': payment_amount,
+                    'phone_number': phone_number,
+                    'checkout_request_id': checkout_request_id,
+                    'merchant_request_id': merchant_request_id,
+                    'status': 'PENDING',
+                    'escrow_status': 'HELD'
+                }
             )
             return Response({
                 "message": "STK Push initiated successfully. Check your phone to complete payment.",
