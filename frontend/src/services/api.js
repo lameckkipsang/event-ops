@@ -7,7 +7,7 @@ const api = axios.create({
     },
 });
 
-// Automatically attach JWT token if stored in localStorage
+//Automatically attach JWT token if stored in localStorage
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
@@ -17,5 +17,18 @@ api.interceptors.request.use((config) => {
 }, (error) => {
     return Promise.reject(error);
 });
+
+//if backend says 401 Unauthorized, clear tokens and send to login
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;
