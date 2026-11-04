@@ -44,15 +44,15 @@ export default function Payment() {
       formattedPhone = '254' + formattedPhone.slice(1);
     }
 
-    // Determine payment type dynamically if not explicitly provided in navigation state
-    const paymentType = type || (item.tier_name || item.ticket_type || item.event ? 'event_ticket' : 'vendor_booking');
+    // Explicitly determine payment type to avoid lookup collisions between tickets and vendor bookings
+    const resolvedType = type || (item.ticket_type || item.tier_id ? 'event_ticket' : 'vendor_booking');
 
     try {
       await api.post('finance/stk-push/', {
         phone_number: formattedPhone,
         booking_id: item.id,
         amount: item.price || item.cost,
-        type: paymentType,
+        type: resolvedType,
       });
       setPaymentSuccess(true);
     } catch (err) {
