@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Events from './pages/Events';
 import VendorMarketplace from './pages/VendorMarketplace';
 import VendorDashboard from './pages/VendorDashboard';
+import OrganizerBookings from './pages/OrganizerBookings';
 import SecurityCheckIn from './pages/SecurityCheckIn';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/events" element={<Events />} />
             <Route path="/marketplace" element={<VendorMarketplace />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+            <Route path="/organizer/bookings" element={<OrganizerBookings />} />
             <Route path="/security/check-in" element={<SecurityCheckIn />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
