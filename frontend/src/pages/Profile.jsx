@@ -340,7 +340,7 @@ export default function Profile() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 receipts-grid">
               {transactions.map((tx) => (
-                <ReceiptCard key={tx.id} tx={tx} />
+                <ReceiptCard key={tx.id} transaction={tx} />
               ))}
             </div>
           )}
