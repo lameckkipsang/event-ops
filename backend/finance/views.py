@@ -1,7 +1,8 @@
+import uuid
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status, permissions, generics
 from django.utils.crypto import get_random_string
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
@@ -9,7 +10,6 @@ from tickets.models import TicketTier, Ticket
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import InitiatePaymentSerializer, TransactionSerializer
-from rest_framework import generics
 
 class InitiateSTKPushView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -27,27 +27,28 @@ class InitiateSTKPushView(APIView):
         ticket_instance = None
         payment_amount = int(float(request.data.get('amount', 1)))
 
+        # Route 1: Event Ticket Purchase
         if payment_type == 'event_ticket':
             try:
                 tier = TicketTier.objects.get(id=item_id)
-                payment_amount = int(float(tier.price))
+                payment_amount = int(float(request.data.get('amount') or tier.price))
                 ticket_instance = Ticket.objects.create(
                     event=tier.event,
                     tier=tier,
                     attendee=request.user,
-                    ticket_code=f"TCK-{get_random_string(6).upper()}"
+                    ticket_code=f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
                 )
             except TicketTier.DoesNotExist:
                 return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Route 2: Vendor Service Package Booking
         else:
             try:
-                # Try fetching an existing booking request for this user
                 booking_request = BookingRequest.objects.get(id=item_id, organizer=request.user)
                 payment_amount = int(float(request.data.get('amount') or booking_request.package.price))
             except BookingRequest.DoesNotExist:
                 try:
                     package = VendorPackage.objects.get(id=item_id)
-                    # Use get_or_create to prevent duplicate booking constraint errors if a pending one exists
                     booking_request, created = BookingRequest.objects.get_or_create(
                         organizer=request.user,
                         package=package,
@@ -58,35 +59,34 @@ class InitiateSTKPushView(APIView):
                     return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
 
         callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
+        reference_id = ticket_instance.id if ticket_instance else (booking_request.id if booking_request else item_id)
 
         daraja_response = initiate_stk_push(
             phone_number=phone_number,
             amount=payment_amount,
             callback_url=callback_url,
-            reference_id=booking_request.id if booking_request else item_id
+            reference_id=reference_id
         )
 
         if daraja_response.get('ResponseCode') == '0':
             checkout_request_id = daraja_response.get('CheckoutRequestID')
             merchant_request_id = daraja_response.get('MerchantRequestID')
 
-            # Use update_or_create to gracefully handle retries on the same booking without crashing
-            transaction, created = Transaction.objects.update_or_create(
+            transaction = Transaction.objects.create(
+                organizer=request.user,
                 booking=booking_request,
-                defaults={
-                    'organizer': request.user,
-                    'ticket': ticket_instance,
-                    'amount': payment_amount,
-                    'phone_number': phone_number,
-                    'checkout_request_id': checkout_request_id,
-                    'merchant_request_id': merchant_request_id,
-                    'status': 'PENDING',
-                    'escrow_status': 'HELD'
-                }
+                ticket=ticket_instance,
+                amount=payment_amount,
+                phone_number=phone_number,
+                checkout_request_id=checkout_request_id,
+                merchant_request_id=merchant_request_id,
+                status='PENDING',
+                escrow_status='HELD'
             )
             return Response({
                 "message": "STK Push initiated successfully. Check your phone to complete payment.",
-                "details": daraja_response
+                "details": daraja_response,
+                "transaction_id": transaction.id
             }, status=status.HTTP_200_OK)
         
         return Response({"error": "Failed to initiate STK Push.", "details": daraja_response}, status=status.HTTP_400_BAD_REQUEST)
