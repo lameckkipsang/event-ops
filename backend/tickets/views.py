@@ -51,22 +51,36 @@ class UserTicketListView(APIView):
 
 
 class TicketCheckInView(APIView):
+    """
+    Allows security personnel to check in attendees using the unique ticket_code (EVT-TCK-XXXXXX).
+    """
     permission_classes = [permissions.IsAuthenticated]
 
-    def patch(self, request, id):
+    def post(self, request):
+        code = request.data.get('ticket_code')
+        if not code:
+            return Response({"error": "Ticket code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            ticket = Ticket.objects.get(id=id)
+            ticket = Ticket.objects.get(ticket_code=code.strip().upper())
         except Ticket.DoesNotExist:
-            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Invalid ticket code. Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if ticket.is_checked_in:
-            return Response({"error": "This ticket has already been checked in."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "error": "This ticket has already been checked in!",
+                "checked_in_at": getattr(ticket, 'checked_in_at', None)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         ticket.is_checked_in = True
         ticket.save()
         
-        serializer = TicketSerializer(ticket)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            "message": f"Successfully checked in ticket {ticket.ticket_code}!",
+            "attendee": ticket.attendee.username if ticket.attendee else "Unknown",
+            "event": ticket.event.title if hasattr(ticket.event, 'title') else str(ticket.event)
+        }, status=status.HTTP_200_OK)
+
 
 class TicketTierListView(APIView):
     permission_classes = [permissions.AllowAny] # Anyone can browse ticket tiers
@@ -76,6 +90,7 @@ class TicketTierListView(APIView):
         tiers = TicketTier.objects.filter(quantity_available__gt=0)
         serializer = TicketTierSerializer(tiers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class CheckoutInitiateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -157,6 +172,7 @@ class CheckoutInitiateView(APIView):
                 "details": stk_data
             }, status=status.HTTP_400_BAD_REQUEST)
 
+
 class OrganizerTicketListView(APIView):
     """
     Allows an organizer to view a list of all tickets purchased 
@@ -176,6 +192,7 @@ class OrganizerTicketListView(APIView):
             
         serializer = TicketSerializer(tickets, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all().order_by('-created_at')
