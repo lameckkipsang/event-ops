@@ -34,6 +34,14 @@ export default function ReceiptCard({ transaction }) {
     }
   };
 
+  const formattedDate = transaction.created_at
+    ? new Date(transaction.created_at).toLocaleDateString()
+    : 'N/A';
+
+  const formattedTime = transaction.created_at
+    ? new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+
   return (
     <div
       id={`receipt-card-${transaction.id}`}
@@ -96,11 +104,13 @@ export default function ReceiptCard({ transaction }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Hash style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
-            <span>Transaction ID: #{transaction.id}</span>
+            <span>
+              {transaction.ticket ? `Ticket ID: #${transaction.ticket}` : `Transaction ID: #${transaction.id}`}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Calendar style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
-            <span>Date: {transaction.created_at ? new Date(transaction.created_at).toLocaleDateString() : 'N/A'}</span>
+            <span>Date: {formattedDate} {formattedTime && `at ${formattedTime}`}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Receipt style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
