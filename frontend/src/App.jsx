@@ -5,10 +5,11 @@ import Home from './pages/Home';
 import Events from './pages/Events';
 import VendorMarketplace from './pages/VendorMarketplace';
 import VendorDashboard from './pages/VendorDashboard';
+import SecurityCheckIn from './pages/SecurityCheckIn';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
-import Payment from './pages/Payment'; 
+import Payment from './pages/Payment';
 
 export default function App() {
   return (
@@ -25,7 +26,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/payment" element={<Payment />} /> 
+            <Route path="/payment" element={<Payment />} />
           </Routes>
         </main>
         <Footer />

@@ -1,86 +1,92 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, User, LogOut, Home, Calendar, Store } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Calendar, Store, ShieldCheck, User, LogOut, Ticket, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const isAuthenticated = !!localStorage.getItem('access_token');
-  
-  // Retrieve user details/role if stored or decoded from token profile context
-  const userRole = localStorage.getItem('user_role') || 'Attendee';
-  const userName = localStorage.getItem('user_name') || 'User';
+  const location = useLocation();
+
+  const token = localStorage.getItem('access_token');
+  const role = localStorage.getItem('user_role') || '';
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_name');
+    localStorage.clear();
     navigate('/login');
   };
 
+  const isActive = (path) => location.pathname === path;
+  const linkClass = (path) =>
+    `flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+      isActive(path)
+        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+        : 'text-emerald-200 hover:bg-emerald-900/80 hover:text-white'
+    };`;
+
   return (
-    <nav className="bg-emerald-900/40 backdrop-blur-md border-b border-emerald-800/60 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo / Brand */}
-        <Link to="/" className="flex items-center gap-2 font-bold text-xl text-white">
-          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <ShieldCheck className="w-6 h-6 text-white" />
-          </div>
-          EventOps
-        </Link>
-
-        {/* Global Nav Links & Home Buttons */}
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-emerald-200">
-          <Link to="/" className="hover:text-orange-400 transition-colors flex items-center gap-1">
-            <Home className="w-4 h-4" /> Home
-          </Link>
-          <Link to="/events" className="hover:text-orange-400 transition-colors flex items-center gap-1">
-            <Calendar className="w-4 h-4" /> Events
-          </Link>
-          <Link to="/marketplace" className="hover:text-orange-400 transition-colors flex items-center gap-1">
-            <Store className="w-4 h-4" /> Marketplace
-          </Link>
-        </div>
-
-        {/* Auth Actions & Role Badge */}
-        <div className="flex items-center gap-3">
-          {isAuthenticated ? (
-            <>
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-bold text-white">{userName}</span>
-                <span className="text-[10px] text-orange-400 capitalize">{userRole.replace('_', ' ')}</span>
+    <nav className="bg-emerald-950/90 border-b border-emerald-800/80 sticky top-0 z-50 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center">
+          <div className="flex items-center gap-8">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/30">
+                EO
               </div>
-              <Link
-                to="/profile"
-                className="flex items-center gap-2 bg-emerald-800/60 hover:bg-emerald-800 border border-emerald-700/80 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-              >
-                <User className="w-4 h-4 text-orange-400" />
-                Profile
+              <span className="font-extrabold text-lg tracking-tight text-white">EventOps</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-2">
+              <Link to="/events" className={linkClass('/events')}>
+                <Calendar className="w-4 h-4" /> Events
               </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 text-emerald-300 hover:text-red-400 px-3 py-2 text-sm font-semibold transition-colors"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="text-white hover:text-orange-400 px-4 py-2 text-sm font-semibold transition-colors"
-              >
-                Sign In
+              <Link to="/marketplace" className={linkClass('/marketplace')}>
+                <Store className="w-4 h-4" /> Marketplace
               </Link>
-              <Link
-                to="/register"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-orange-500/20"
-              >
-                Get Started
-              </Link>
-            </>
-          )}
+
+              {/* Conditional Role-Based Links */}
+              {role === 'VENDOR' && (
+                <Link to="/vendor/dashboard" className={linkClass('/vendor/dashboard')}>
+                  <LayoutDashboard className="w-4 h-4" /> Vendor Dashboard
+                </Link>
+              )}
+
+              {role === 'SECURITY' && (
+                <Link to="/security/check-in" className={linkClass('/security/check-in')}>
+                  <ShieldCheck className="w-4 h-4" /> Gate Check-In
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {token ? (
+              <>
+                <Link to="/profile" className={linkClass('/profile')}>
+                  <User className="w-4 h-4" /> Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-red-950/60 border border-red-800/80 text-red-300 hover:bg-red-900/80 transition-all"
+                >
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-emerald-200 hover:bg-emerald-900/60 transition-all"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/20 transition-all"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
