@@ -11,14 +11,12 @@ export default function VendorMarketplace() {
   const [selectedTier, setSelectedTier] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Fetch categories
   useEffect(() => {
     marketplaceService.getCategories()
       .then(data => setCategories(data))
       .catch(err => console.error("Error fetching categories:", err));
   }, []);
 
-  // Fetch packages whenever filters change
   useEffect(() => {
     setLoading(true);
     const params = {};
@@ -36,8 +34,8 @@ export default function VendorMarketplace() {
       });
   }, [selectedCategory, selectedTier]);
 
-  //handles route to payment with package state
   const handleBookService = (pkg) => {
+    // Backend manages authentication rules when booking requests are created
     navigate('/payment', {
       state: {
         item: {
@@ -53,7 +51,6 @@ export default function VendorMarketplace() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 text-white">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold flex items-center gap-3 text-emerald-400">
           <Store className="w-8 h-8 text-orange-500" />
@@ -64,14 +61,12 @@ export default function VendorMarketplace() {
         </p>
       </div>
 
-      {/* Filters Bar */}
       <div className="bg-emerald-950/60 border border-emerald-800/80 p-4 rounded-2xl mb-8 flex flex-wrap gap-4 items-center justify-between shadow-lg">
         <div className="flex flex-wrap gap-3 items-center">
           <span className="text-sm font-semibold flex items-center gap-1 text-emerald-300">
             <Filter className="w-4 h-4 text-orange-400" /> Filter by:
           </span>
 
-          {/* Category Filter */}
           <select 
             value={selectedCategory} 
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -83,7 +78,6 @@ export default function VendorMarketplace() {
             ))}
           </select>
 
-          {/* Tier Filter */}
           <select 
             value={selectedTier} 
             onChange={(e) => setSelectedTier(e.target.value)}
@@ -97,7 +91,6 @@ export default function VendorMarketplace() {
           </select>
         </div>
 
-        {/* Clear Filters */}
         {(selectedCategory || selectedTier) && (
           <button 
             onClick={() => { setSelectedCategory(''); setSelectedTier(''); }}
@@ -108,7 +101,6 @@ export default function VendorMarketplace() {
         )}
       </div>
 
-      {/* Packages Grid */}
       {loading ? (
         <div className="text-center py-20 text-emerald-400 font-medium">Loading marketplace packages...</div>
       ) : packages.length === 0 ? (
