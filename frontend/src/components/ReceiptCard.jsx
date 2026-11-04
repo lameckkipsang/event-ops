@@ -1,11 +1,13 @@
 import React from 'react';
-import { Calendar, Receipt, Clock, CheckCircle, Download } from 'lucide-react';
+import { Calendar, Receipt, Clock, CheckCircle, Download, Hash } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
-export default function ReceiptCard({ tx }) {
+export default function ReceiptCard({ transaction }) {
+  if (!transaction) return null;
+
   const handleDownloadPDF = async () => {
-    const element = document.getElementById(`receipt-card-${tx.id}`);
+    const element = document.getElementById(`receipt-card-${transaction.id}`);
     if (!element) return;
 
     try {
@@ -26,15 +28,15 @@ export default function ReceiptCard({ tx }) {
       pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      pdf.save(`EventOps-Receipt-${tx.mpesa_receipt_number || tx.id}.pdf`);
-    } catch (err) {
-      console.error('Failed to generate PDF:', err);
+      pdf.save(`EventOps-Receipt-${transaction.mpesa_receipt_number || transaction.id}.pdf`);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
     }
   };
 
   return (
     <div
-      id={`receipt-card-${tx.id}`}
+      id={`receipt-card-${transaction.id}`}
       style={{
         backgroundColor: '#022c22',
         borderColor: '#065f46',
@@ -68,14 +70,14 @@ export default function ReceiptCard({ tx }) {
                 display: 'inline-block'
               }}
             >
-              {tx.mpesa_receipt_number ? 'Paid Ticket' : 'Pending Payment'}
+              {transaction.booking_title ? 'Marketplace Booking' : 'Event Ticket'}
             </span>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#ffffff', marginTop: '0.5rem' }}>
-              {tx.booking_details?.package_name || tx.booking_details?.event_title || 'Event Ticket'}
+              {transaction.booking_title || transaction.ticket_title || 'Event Access Pass'}
             </h3>
           </div>
           <span style={{ fontSize: '1.125rem', fontWeight: 'extrabold', color: '#fb923c' }}>
-            KES {parseFloat(tx.amount).toLocaleString()}
+            KES {transaction.amount ? parseFloat(transaction.amount).toLocaleString() : '0'}
           </span>
         </div>
 
@@ -93,17 +95,21 @@ export default function ReceiptCard({ tx }) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Hash style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
+            <span>Transaction ID: #{transaction.id}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Calendar style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
-            <span>Date: {new Date(tx.created_at).toLocaleDateString()}</span>
+            <span>Date: {transaction.created_at ? new Date(transaction.created_at).toLocaleDateString() : 'N/A'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Receipt style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
-            <span>Receipt No: {tx.mpesa_receipt_number || 'Processing...'}</span>
+            <span>Receipt No: {transaction.mpesa_receipt_number || 'Processing...'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
             <span>
-              Status: <strong style={{ color: '#a7f3d0' }}>{tx.status}</strong> (Escrow: {tx.escrow_status})
+              Status: <strong style={{ color: '#a7f3d0' }}>{transaction.status || 'UNKNOWN'}</strong> (Escrow: {transaction.escrow_status || 'N/A'})
             </span>
           </div>
         </div>
