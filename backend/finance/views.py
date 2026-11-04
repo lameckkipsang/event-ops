@@ -27,16 +27,18 @@ class InitiateSTKPushView(APIView):
         ticket_instance = None
         payment_amount = int(float(request.data.get('amount', 1)))
 
-        # Route 1: Event Ticket Purchase
+        # Event Ticket Purchase with matching ticket_code generation
         if payment_type == 'event_ticket':
             try:
                 tier = TicketTier.objects.get(id=item_id)
                 payment_amount = int(float(request.data.get('amount') or tier.price))
+                generated_code = f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
                 ticket_instance = Ticket.objects.create(
                     event=tier.event,
                     tier=tier,
                     attendee=request.user,
-                    ticket_code=f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
+                    ticket_code=generated_code,
+                    is_checked_in=False
                 )
             except TicketTier.DoesNotExist:
                 return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -86,7 +88,8 @@ class InitiateSTKPushView(APIView):
             return Response({
                 "message": "STK Push initiated successfully. Check your phone to complete payment.",
                 "details": daraja_response,
-                "transaction_id": transaction.id
+                "transaction_id": transaction.id,
+                "ticket_code": ticket_instance.ticket_code if ticket_instance else None
             }, status=status.HTTP_200_OK)
         
         return Response({"error": "Failed to initiate STK Push.", "details": daraja_response}, status=status.HTTP_400_BAD_REQUEST)
