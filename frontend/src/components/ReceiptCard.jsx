@@ -42,6 +42,9 @@ export default function ReceiptCard({ transaction }) {
     ? new Date(transaction.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
 
+  // Use the backend generated ticket_code directly or fall back to reference ID
+  const displayCode = transaction.ticket_code || `REF-${transaction.id}`;
+
   return (
     <div
       id={`receipt-card-${transaction.id}`}
@@ -105,7 +108,7 @@ export default function ReceiptCard({ transaction }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Hash style={{ width: '1rem', height: '1rem', color: '#34d399' }} />
             <span>
-              {transaction.ticket ? `Ticket ID: #${transaction.ticket}` : `Transaction ID: #${transaction.id}`}
+              Pass Code: <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>#{displayCode}</strong>
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
