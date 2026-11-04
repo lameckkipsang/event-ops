@@ -28,7 +28,7 @@ export default function Events() {
 
   const handleOpenModal = (event) => {
     setSelectedEvent(event);
-    setSelectedTier(null); // Reset tier selection when opening modal
+    setSelectedTier(null);
   };
 
   const handleCloseModal = () => {
@@ -39,6 +39,7 @@ export default function Events() {
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
 
+    // Backend validates authentication when payment/purchase endpoints are hit
     navigate('/payment', {
       state: {
         item: {
@@ -54,8 +55,6 @@ export default function Events() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
-      
-      {/* Header */}
       <div className="border-b border-emerald-800/60 pb-6">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-emerald-400 flex items-center gap-3">
           <Calendar className="w-8 h-8 text-orange-500" />
@@ -66,7 +65,6 @@ export default function Events() {
         </p>
       </div>
 
-      {/* Events Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
@@ -91,20 +89,16 @@ export default function Events() {
         </div>
       )}
 
-      {/* Event Overview Modal with Blurred Background */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          {/* Blurred Backdrop */}
           <div 
             className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
             onClick={handleCloseModal}
           />
 
-          {/* Modal Card Content */}
           <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
             <div className="absolute top-0 right-1/3 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Top-Right X Close Button */}
             <button 
               onClick={handleCloseModal}
               className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors"
@@ -112,7 +106,6 @@ export default function Events() {
               <X className="w-5 h-5" />
             </button>
 
-            {/* Modal Header */}
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
                 Event Overview
@@ -122,12 +115,10 @@ export default function Events() {
               </h2>
             </div>
 
-            {/* Description */}
             <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
               {selectedEvent.description}
             </p>
 
-            {/* Metadata Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-y border-emerald-900">
               <div className="flex items-center gap-3 text-emerald-200 text-sm">
                 <Calendar className="w-5 h-5 text-orange-400 flex-shrink-0" />
@@ -139,7 +130,6 @@ export default function Events() {
               </div>
             </div>
 
-            {/* Interactive Ticket Tiers */}
             <div>
               <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">
                 Select Available Ticket
@@ -177,7 +167,6 @@ export default function Events() {
               </div>
             </div>
 
-            {/* Purchase Ticket Action */}
             {selectedTier && (
               <div className="pt-4 border-t border-emerald-900 flex items-center justify-between">
                 <div>
@@ -196,11 +185,9 @@ export default function Events() {
                 </button>
               </div>
             )}
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
