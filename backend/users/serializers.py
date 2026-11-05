@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 import uuid
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
+from .models import Notification
+
 User = get_user_model()
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -18,8 +20,8 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             base_username = email.split('@')[0]
             unique_suffix = uuid.uuid4().hex[:6]
             validated_data['username'] = f"{base_username}_{unique_suffix}"
-        user = User(**validated_data) 
-        user.set_password(password) 
+        user = User(**validated_data)
+        user.set_password(password)
         user.save()
         return user
 
@@ -36,12 +38,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         if email and password:
             user = authenticate(request=self.context.get('request'), email=email, password=password)
-            
             if not user:
                 raise serializers.ValidationError("No active account found with the given credentials.")
-            
             refresh = self.get_token(user)
-            
             return {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -50,3 +49,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'role': user.role
             }
         raise serializers.ValidationError("Must include 'email' and 'password'.")
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
