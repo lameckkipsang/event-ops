@@ -4,7 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { authService } from '../services/authApi';
 import RoleSelectModal from '../components/RoleSelectModal';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from '../contexts/ToastContext'; 
 
 export default function Login() {
   const navigate = useNavigate();
@@ -49,7 +49,10 @@ export default function Login() {
         navigate('/');
       }
     } catch (err) {
-      console.error('Login error:', err);
+      // Only log to console if it's an unexpected server crash, not a standard 400/401 validation error
+      if (err.response?.status !== 400 && err.response?.status !== 401) {
+        console.error('Login error:', err);
+      }
       setError('Invalid email or password.');
       addToast({ title: 'Login Failed', message: 'Invalid credentials. Try again.', type: 'error' });
     } finally {
@@ -91,7 +94,9 @@ export default function Login() {
         navigate('/');
       }
     } catch (err) {
-      console.error('Google OAuth error:', err);
+      if (err.response?.status !== 400 && err.response?.status !== 401) {
+        console.error('Google OAuth error:', err);
+      }
       setError('Google authentication failed. Please try again.');
     } finally {
       setLoading(false);
