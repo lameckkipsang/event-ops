@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Event
 from tickets.serializers import TicketTierSerializer
-from tickets.models import TicketTier
+from tickets.models import TicketTier, Ticket
+from users.models import Notification
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
@@ -58,5 +59,14 @@ class EventSerializer(serializers.ModelSerializer):
             instance.ticket_tiers.all().delete()
             for tier_data in tiers_data:
                 TicketTier.objects.create(event=instance, **tier_data)
+
+        attendee_ids = Ticket.objects.filter(event=instance).values_list('attendee_id', flat=True).distinct()
+        for att_id in attendee_ids:
+            Notification.objects.create(
+                user_id=att_id,
+                title="Event Details Changed!",
+                message=f"Details for '{instance.title}' have been updated. Click to view.",
+                link="/profile"
+            )
 
         return instance
