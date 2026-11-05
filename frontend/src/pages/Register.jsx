@@ -6,8 +6,8 @@ import api from '../services/api';
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: 'robin',
-    email: 'robin@gmail.com',
+    username: '',
+    email: '',
     password: '',
     role: 'ATTENDEE',
   });
@@ -27,8 +27,15 @@ export default function Register() {
       await api.post('accounts/', formData);
       navigate('/login');
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.response?.data?.detail || 'Failed to register. Please check your credentials.');
+      console.error('Registration error:', err.response?.data);
+      const errorData = err.response?.data;
+      if (typeof errorData === 'object' && errorData !== null) {
+        const firstKey = Object.keys(errorData)[0];
+        const firstError = errorData[firstKey];
+        setError(Array.isArray(firstError) ? `${firstKey}: ${firstError[0]}` : JSON.stringify(errorData));
+      } else {
+        setError('Failed to register. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +68,7 @@ export default function Register() {
               required
               value={formData.username}
               onChange={handleChange}
-              placeholder="robin"
+              placeholder="robin1"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
@@ -93,7 +100,7 @@ export default function Register() {
               required
               value={formData.password}
               onChange={handleChange}
-              placeholder="robin1"
+              placeholder="At least 6 characters"
               className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
             />
           </div>
