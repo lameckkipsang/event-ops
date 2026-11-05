@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle, Edit, Trash2, Plus, Minus } from 'lucide-react';
 import EventCard from '../components/EventCard';
 import api from '../services/api';
 
@@ -25,17 +25,19 @@ export default function Events() {
     end_date: '',
     venue_name: '',
     venue_location: '',
-    ticket_type: 'Regular',
-    price: '',
-    quantity_available: '100',
   });
+  
+  // Multiple Ticket Tiers State
+  const [ticketTiers, setTicketTiers] = useState([
+    { ticket_type: 'Regular', price: '', quantity_available: '100', description: 'Standard entry access to all general areas.' }
+  ]);
+
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState('');
 
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
 
-  // Helper to decode JWT access token to get user ID / username if not stored separately
   const parseJwt = (token) => {
     try {
       const base64Url = token.split('.')[1];
@@ -75,7 +77,7 @@ export default function Events() {
 
   const handleOpenModal = (event) => {
     setSelectedEvent(event);
-    setSelectedTier(null);
+    setSelectedTier(event.ticket_tiers?.[0] || null);
   };
 
   const handleCloseModal = () => {
@@ -93,10 +95,10 @@ export default function Events() {
       end_date: '',
       venue_name: '',
       venue_location: '',
-      ticket_type: 'Regular',
-      price: '',
-      quantity_available: '100',
     });
+    setTicketTiers([
+      { ticket_type: 'Regular', price: '', quantity_available: '100', description: 'Standard entry access to all general areas.' }
+    ]);
     setHostingError('');
     setIsHostingOpen(true);
   };
@@ -111,13 +113,39 @@ export default function Events() {
       end_date: event.end_date || event.date || '',
       venue_name: event.venue_name || '',
       venue_location: event.venue_location || '',
-      ticket_type: event.ticket_tiers?.[0]?.ticket_type || 'Regular',
-      price: event.ticket_tiers?.[0]?.price !== undefined ? String(event.ticket_tiers[0].price) : '',
-      quantity_available: event.ticket_tiers?.[0]?.quantity_available ? String(event.ticket_tiers[0].quantity_available) : '100',
     });
+    
+    if (event.ticket_tiers && event.ticket_tiers.length > 0) {
+      setTicketTiers(event.ticket_tiers.map(t => ({
+        ticket_type: t.ticket_type || 'Regular',
+        price: t.price !== undefined ? String(t.price) : '',
+        quantity_available: t.quantity_available ? String(t.quantity_available) : '100',
+        description: t.description || 'Access tier perks.'
+      })));
+    } else {
+      setTicketTiers([
+        { ticket_type: 'Regular', price: '', quantity_available: '100', description: 'Standard entry access.' }
+      ]);
+    }
+
     setHostingError('');
     setSelectedEvent(null);
     setIsHostingOpen(true);
+  };
+
+  const handleAddTierRow = () => {
+    setTicketTiers([...ticketTiers, { ticket_type: 'VIP', price: '', quantity_available: '50', description: 'Priority seating and complimentary refreshments.' }]);
+  };
+
+  const handleRemoveTierRow = (index) => {
+    if (ticketTiers.length === 1) return;
+    setTicketTiers(ticketTiers.filter((_, i) => i !== index));
+  };
+
+  const handleTierChange = (index, field, value) => {
+    const updated = [...ticketTiers];
+    updated[index][field] = value;
+    setTicketTiers(updated);
   };
 
   const handleDeleteEvent = async (eventId) => {
@@ -142,7 +170,7 @@ export default function Events() {
           id: selectedTier.id,
           title: `${selectedEvent.title} - ${selectedTier.ticket_type}`,
           price: selectedTier.price,
-          description: selectedEvent.description || 'Event Ticket Booking',
+          description: selectedTier.description || selectedEvent.description || 'Event Ticket Booking',
         },
         type: 'event_ticket',
       },
@@ -163,7 +191,12 @@ export default function Events() {
       return val;
     };
 
-    const parsedPrice = parseFloat(hostingForm.price);
+    const formattedTiers = ticketTiers.map(tier => ({
+      ticket_type: tier.ticket_type || 'Regular',
+      price: isNaN(parseFloat(tier.price)) ? 0 : parseFloat(tier.price),
+      quantity_available: parseInt(tier.quantity_available) || 100,
+      description: tier.description || ''
+    }));
 
     const payload = {
       title: hostingForm.title,
@@ -173,13 +206,7 @@ export default function Events() {
       end_date: formatDate(hostingForm.end_date || hostingForm.start_date),
       venue_name: hostingForm.venue_name,
       venue_location: hostingForm.venue_location || hostingForm.venue_name,
-      ticket_tiers: [
-        {
-          ticket_type: hostingForm.ticket_type || 'Regular',
-          price: isNaN(parsedPrice) ? 0 : parsedPrice,
-          quantity_available: parseInt(hostingForm.quantity_available) || 100,
-        }
-      ]
+      ticket_tiers: formattedTiers
     };
 
     try {
@@ -249,11 +276,11 @@ export default function Events() {
         </div>
       )}
 
-      {/* Host / Edit Event Modal */}
+      {/* Host / Edit Event Modal with Dropdown Ticket Tiers */}
       {isHostingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 overflow-y-auto py-10">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={() => setIsHostingOpen(false)} />
-          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 my-auto max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 my-auto max-h-[90vh] overflow-y-auto">
             <button onClick={() => setIsHostingOpen(false)} className="absolute top-4 right-4 bg-emerald-900/85 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -263,7 +290,7 @@ export default function Events() {
               </span>
               <h2 className="text-2xl font-extrabold text-white mt-3 flex items-center gap-2">
                 <PlusCircle className="w-6 h-6 text-orange-500" /> 
-                {editingEventId ? 'Edit Event Details' : 'Host a New Event'}
+                {editingEventId ? 'Edit Event Details & Tiers' : 'Host a New Event'}
               </h2>
             </div>
 
@@ -333,46 +360,86 @@ export default function Events() {
                 </div>
               </div>
 
-              <div className="p-4 bg-emerald-900/30 border border-emerald-800 rounded-2xl space-y-3">
-                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider block">Ticket Pricing</span>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Tier Name</label>
-                    <input
-                      type="text"
-                      value={hostingForm.ticket_type}
-                      onChange={(e) => setHostingForm({ ...hostingForm, ticket_type: e.target.value })}
-                      placeholder="Regular / VIP"
-                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Price (KES)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={hostingForm.price}
-                      onChange={(e) => setHostingForm({ ...hostingForm, price: e.target.value })}
-                      placeholder="0 for Free"
-                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Quantity</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={hostingForm.quantity_available}
-                      onChange={(e) => setHostingForm({ ...hostingForm, quantity_available: e.target.value })}
-                      placeholder="100"
-                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
+              {/* Dynamic Multiple Ticket Tiers Section with Dropdown Choices */}
+              <div className="p-4 bg-emerald-900/30 border border-emerald-800 rounded-2xl space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Ticket Tiers & Pricing</span>
+                  <button
+                    type="button"
+                    onClick={handleAddTierRow}
+                    className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/40 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Tier
+                  </button>
                 </div>
+
+                {ticketTiers.map((tier, index) => (
+                  <div key={index} className="p-3 bg-emerald-950/80 border border-emerald-800/80 rounded-xl space-y-3 relative">
+                    {ticketTiers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTierRow(index)}
+                        className="absolute top-3 right-3 text-red-400 hover:text-red-300 p-1"
+                        title="Remove Tier"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="grid grid-cols-3 gap-3 pr-8">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Tier Name</label>
+                        <select
+                          value={tier.ticket_type}
+                          onChange={(e) => handleTierChange(index, 'ticket_type', e.target.value)}
+                          className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                        >
+                          <option value="Basic" className="bg-emerald-950 text-white">Basic</option>
+                          <option value="Regular" className="bg-emerald-950 text-white">Regular</option>
+                          <option value="VIP" className="bg-emerald-950 text-white">VIP</option>
+                          <option value="VVIP" className="bg-emerald-950 text-white">VVIP</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Price (KES)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          value={tier.price}
+                          onChange={(e) => handleTierChange(index, 'price', e.target.value)}
+                          placeholder="0 for Free"
+                          className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Quantity</label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          value={tier.quantity_available}
+                          onChange={(e) => handleTierChange(index, 'quantity_available', e.target.value)}
+                          placeholder="100"
+                          className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Tier Description (What does this tier include?)</label>
+                      <input
+                        type="text"
+                        value={tier.description || ''}
+                        onChange={(e) => handleTierChange(index, 'description', e.target.value)}
+                        placeholder="e.g. Standard entry access to all general sessions."
+                        className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-emerald-300 mb-1">Description</label>
+                <label className="block text-xs font-semibold text-emerald-300 mb-1">Event Description</label>
                 <textarea
                   rows="3"
                   required
@@ -395,11 +462,11 @@ export default function Events() {
         </div>
       )}
 
-      {/* Event Details & Ticket Purchasing Modal */}
+      {/* Event Details & Ticket Purchasing Modal with Clear Tier Selection & Descriptions */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
-          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
+          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden max-h-[90vh] overflow-y-auto">
             <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -426,8 +493,9 @@ export default function Events() {
               </div>
             </div>
 
+            {/* Selectable Ticket Tiers with Detailed Perks / Descriptions */}
             <div>
-              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Available Ticket</h3>
+              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Ticket Tier</h3>
               <div className="space-y-3">
                 {selectedEvent.ticket_tiers && selectedEvent.ticket_tiers.length > 0 ? (
                   selectedEvent.ticket_tiers.map((tier) => {
@@ -436,23 +504,35 @@ export default function Events() {
                       <div
                         key={tier.id}
                         onClick={() => setSelectedTier(tier)}
-                        className={`flex justify-between items-center p-4 rounded-xl cursor-pointer transition-all border ${
-                          isSelected ? 'bg-orange-950/40 border-orange-500 shadow-md shadow-orange-500/10' : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
+                        className={`p-4 rounded-2xl cursor-pointer transition-all border ${
+                          isSelected ? 'bg-orange-950/50 border-orange-500 shadow-lg shadow-orange-500/10' : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          {isSelected && <CheckCircle2 className="w-5 h-5 text-orange-400" />}
-                          <div>
-                            <span className="font-bold text-white text-sm block">{tier.ticket_type}</span>
-                            <span className="text-xs text-emerald-300/70">{tier.quantity_available} available</span>
+                        <div className="flex justify-between items-center mb-1">
+                          <div className="flex items-center gap-2.5">
+                            <input 
+                              type="radio" 
+                              checked={isSelected} 
+                              onChange={() => setSelectedTier(tier)}
+                              className="accent-orange-500 w-4 h-4 cursor-pointer"
+                            />
+                            <span className="font-extrabold text-white text-base">{tier.ticket_type}</span>
                           </div>
+                          <span className="font-extrabold text-orange-400 text-lg">
+                            {parseFloat(tier.price) > 0 ? `KES ${parseFloat(tier.price).toLocaleString()}` : 'Free'}
+                          </span>
                         </div>
-                        <span className="font-extrabold text-orange-400 text-base">KES {parseFloat(tier.price).toLocaleString()}</span>
+                        {tier.description && (
+                          <p className="text-xs text-emerald-200/80 pl-6 mt-1">{tier.description}</p>
+                        )}
+                        <span className="text-[11px] text-emerald-400/70 pl-6 mt-2 block font-medium">
+                          {tier.quantity_available} tickets available
+                        </span>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-xs text-emerald-300/60">Free Admission / No tickets required</div>
+                  <div className="text-xs text-emerald-300/60 p-4 bg-emerald-900/30 rounded-xl border border-emerald-800">Free Admission / No tickets required</div>
                 )}
               </div>
             </div>
@@ -460,15 +540,17 @@ export default function Events() {
             {selectedTier && (
               <div className="pt-4 border-t border-emerald-900 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-emerald-400/70 block">Total Price</span>
-                  <span className="text-xl font-extrabold text-white">KES {parseFloat(selectedTier.price).toLocaleString()}</span>
+                  <span className="text-xs text-emerald-400/70 block">Selected Tier Total</span>
+                  <span className="text-xl font-extrabold text-white">
+                    {parseFloat(selectedTier.price) > 0 ? `KES ${parseFloat(selectedTier.price).toLocaleString()}` : 'Free'}
+                  </span>
                 </div>
                 <button 
                   onClick={handlePurchaseTicket}
                   className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-orange-500/25 flex items-center gap-2 transition-all"
                 >
                   <Ticket className="w-4 h-4" />
-                  Purchase Ticket
+                  Proceed to Checkout
                 </button>
               </div>
             )}
