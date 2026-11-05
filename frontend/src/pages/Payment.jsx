@@ -7,7 +7,6 @@ export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Extract item details, type, and optional eventId passed via navigation state
   const { item, type, eventId } = location.state || {};
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -15,7 +14,6 @@ export default function Payment() {
   const [error, setError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Fallback if accessed directly without selecting a service
   if (!item) {
     return (
       <div className="max-w-md mx-auto my-16 text-center text-white">
@@ -33,26 +31,25 @@ export default function Payment() {
     );
   }
 
+  const userRole = localStorage.getItem('user_role') || '';
+  const resolvedType = type || (item.ticket_type || item.tier_id ? 'event_ticket' : 'vendor_booking');
+  const isVendorBooking = resolvedType === 'vendor_booking';
+  const isUnauthorizedAttendee = isVendorBooking && userRole !== 'ORGANIZER';
+
   const handlePayment = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Format phone number to 254XXXXXXXXX
     let formattedPhone = phoneNumber.trim();
     if (formattedPhone.startsWith('0')) {
       formattedPhone = '254' + formattedPhone.slice(1);
     }
 
-    // Determine resolved type safely
-    const resolvedType = type || (item.ticket_type || item.tier_id ? 'event_ticket' : 'vendor_booking');
-
-    // Route cleanly to dedicated separate endpoints
     const endpoint = resolvedType === 'event_ticket'
       ? 'finance/stk-push/ticket/'
       : 'finance/stk-push/vendor/';
 
-    // Construct precise payload for the chosen endpoint
     const payload = {
       phone_number: formattedPhone,
       amount: item.price || item.cost,
@@ -62,15 +59,22 @@ export default function Payment() {
       payload.ticket_tier_id = item.id;
     } else {
       payload.package_id = item.id;
-      // Resolve event_id from multiple possible locations in state or item object
       payload.event_id = eventId || item.event || item.event_id || (typeof item.event === 'object' ? item.event?.id : null);
+      
+      if (!payload.event_id) {
+        setError('event_id is required. Please create an event before booking vendor services.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
       await api.post(endpoint, payload);
       setPaymentSuccess(true);
     } catch (err) {
-      console.error('Payment initiation error:', err);
+      if (err.response?.status !== 400) {
+        console.error('Payment initiation error:', err);
+      }
       const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to initiate M-Pesa STK Push. Please verify your phone number and try again.';
       setError(errorMsg);
     } finally {
@@ -90,7 +94,6 @@ export default function Payment() {
         </p>
       </div>
 
-      {/* Order Summary Card */}
       <div className="p-5 bg-emerald-950/80 border border-emerald-800/80 rounded-2xl mb-6">
         <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
           Order Summary
@@ -110,7 +113,11 @@ export default function Payment() {
         </div>
       )}
 
-      {paymentSuccess ? (
+      {isUnauthorizedAttendee ? (
+        <div className="mb-6 p-4 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-sm text-center font-semibold">
+          Only Event Organizers can book vendor services.
+        </div>
+      ) : paymentSuccess ? (
         <div className="p-6 bg-emerald-950/90 border border-emerald-700/80 rounded-2xl text-center space-y-4">
           <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
           <h3 className="text-xl font-bold text-white">STK Push Sent!</h3>
