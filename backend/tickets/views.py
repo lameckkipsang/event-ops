@@ -9,6 +9,7 @@ from rest_framework import status, permissions, generics
 from .models import Ticket, TicketTier
 from events.models import Event
 from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer, EventSerializer
+from marketplace.models import BookingRequest
 
 # Create your views here.
 
@@ -65,6 +66,20 @@ class TicketCheckInView(APIView):
             ticket = Ticket.objects.get(ticket_code=code.strip().upper())
         except Ticket.DoesNotExist:
             return Response({"error": "Invalid ticket code. Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # STRICT RBAC: Ensure Security agency is actually booked for THIS event
+        user = request.user
+        if getattr(user, 'role', None) == 'SECURITY':
+            has_event_access = BookingRequest.objects.filter(
+                event=ticket.event,
+                package__vendor=user,
+                status='ACCEPTED'
+            ).exists()
+            
+            if not has_event_access:
+                return Response({
+                    "error": "Access Denied. You are not assigned to provide security for this specific event."
+                }, status=status.HTTP_403_FORBIDDEN)
 
         if ticket.is_checked_in:
             return Response({
