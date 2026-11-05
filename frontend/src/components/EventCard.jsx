@@ -3,8 +3,11 @@ import { Calendar, MapPin, Ticket } from 'lucide-react';
 export default function EventCard({ event, onCheckTiers }) {
   // Find the lowest ticket tier price, or default to null
   const startingPrice = event.ticket_tiers && event.ticket_tiers.length > 0
-    ? Math.min(...event.ticket_tiers.map(tier => parseFloat(tier.price)))
+    ? Math.min(...event.ticket_tiers.map(tier => parseFloat(tier.price || 0)))
     : null;
+
+  const eventDate = event.start_date || event.date || event.created_at;
+  const eventLocation = event.venue_location || event.venue_name || event.location || 'Nairobi, Kenya';
 
   return (
     <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm group flex flex-col justify-between">
@@ -28,16 +31,16 @@ export default function EventCard({ event, onCheckTiers }) {
           )}
 
           <div className="text-xs text-emerald-300/70 space-y-1.5 pt-2">
-            {event.date && (
+            {eventDate && (
               <div className="flex items-center">
                 <Calendar className="w-4 h-4 mr-2 text-orange-400 shrink-0" />
-                <span>{event.date}</span>
+                <span>{new Date(eventDate).toLocaleDateString()}</span>
               </div>
             )}
-            {event.location && (
+            {eventLocation && (
               <div className="flex items-center">
                 <MapPin className="w-4 h-4 mr-2 text-orange-400 shrink-0" />
-                <span>{event.location}</span>
+                <span>{eventLocation}</span>
               </div>
             )}
           </div>
@@ -48,7 +51,9 @@ export default function EventCard({ event, onCheckTiers }) {
         <div>
           <span className="text-xs text-emerald-300/60 block">Starting Price</span>
           <span className="text-lg font-extrabold text-white">
-            {startingPrice ? `KES ${startingPrice.toLocaleString()}` : 'Free'}
+            {startingPrice !== null && !isNaN(startingPrice) && startingPrice > 0 
+              ? `KES ${startingPrice.toLocaleString()}` 
+              : 'Free'}
           </span>
         </div>
 
