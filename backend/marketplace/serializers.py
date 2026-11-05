@@ -9,8 +9,8 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
 
 class VendorPackageSerializer(serializers.ModelSerializer):
     vendor_username = serializers.ReadOnlyField(source='vendor.username')
-    vendor_email = serializers.ReadOnlyField(source='vendor.email') # NEW
-    vendor_phone = serializers.ReadOnlyField(source='vendor.phone_number') # NEW
+    vendor_email = serializers.ReadOnlyField(source='vendor.email')
+    vendor_phone = serializers.ReadOnlyField(source='vendor.phone_number')
     category_name = serializers.ReadOnlyField(source='category.name')
     tier_display = serializers.CharField(source='get_tier_display', read_only=True)
 
@@ -35,7 +35,6 @@ class VendorPackageSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'vendor', 'created_at')
 
     def create(self, validated_data):
-        # Automatically assign the currently logged-in user as the package vendor
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['vendor'] = request.user
@@ -45,8 +44,8 @@ class BookingRequestSerializer(serializers.ModelSerializer):
     package_title = serializers.ReadOnlyField(source='package.title')
     event_title = serializers.ReadOnlyField(source='event.title')
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
-    organizer_email = serializers.ReadOnlyField(source='organizer.email') # NEW
-    organizer_phone = serializers.ReadOnlyField(source='organizer.phone_number') # NEW
+    organizer_email = serializers.ReadOnlyField(source='organizer.email')
+    organizer_phone = serializers.ReadOnlyField(source='organizer.phone_number')
 
     class Meta:
         model = BookingRequest
@@ -65,8 +64,17 @@ class BookingRequestSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'organizer', 'status', 'created_at')
 
+    def validate(self, attrs):
+        # Reject the API request entirely if the user is not an Organizer
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            if request.user.role != 'ORGANIZER':
+                raise serializers.ValidationError(
+                    {"error": "Security Exception: Only active Event Organizers can book vendor services."}
+                )
+        return attrs
+
     def create(self, validated_data):
-        # Automatically assign the currently logged-in user as the booking organizer
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['organizer'] = request.user
