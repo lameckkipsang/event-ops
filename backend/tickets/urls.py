@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import TicketPurchaseView, UserTicketListView, TicketCheckInView, TicketTierListView, CheckoutInitiateView, OrganizerTicketListView
+from .views import TicketPurchaseView, UserTicketListView, TicketCheckInView, TicketTierListView, CheckoutInitiateView, OrganizerTicketListView, OrganizerDashboardView
 app_name = 'tickets'
 
 urlpatterns = [
@@ -9,4 +9,5 @@ urlpatterns = [
     path('organizer/tickets/', OrganizerTicketListView.as_view(), name='organizer-tickets'),
     path('<uuid:id>/check-in/', TicketCheckInView.as_view(), name='ticket-check-in'),
     path('checkout/', CheckoutInitiateView.as_view(), name='checkout_initiate'),
+    path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer-dashboard'),
 ]
