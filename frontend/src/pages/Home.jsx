@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, Shield, Ticket, ArrowRight, Sparkles, Loader2, X, MapPin, CheckCircle2 } from 'lucide-react';
@@ -16,7 +15,7 @@ export default function Home() {
 
   const token = localStorage.getItem('access_token');
 
-  useEffect(() => {
+  const fetchEvents = () => {
     api.get('/events/')
       .then((response) => {
         setEvents(response.data);
@@ -28,6 +27,10 @@ export default function Home() {
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchEvents();
   }, []);
 
   const handleOpenModal = (event) => {
@@ -56,10 +59,17 @@ export default function Home() {
     });
   };
 
+  const handleHostClick = (e) => {
+    e.preventDefault();
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    navigate('/events');
+  };
+
   return (
     <div className="space-y-16 pb-12 relative text-white">
-      
-      {/* Hero Banner */}
       <section className="bg-emerald-950 text-white -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-16 sm:py-20 rounded-b-3xl border-b border-emerald-900 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -87,20 +97,18 @@ export default function Home() {
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
             
-            <Link
-              to={token ? "/events" : "/register"}
+            <button
+              onClick={handleHostClick}
               className="w-full sm:w-auto bg-emerald-900/60 hover:bg-emerald-900 text-emerald-100 border border-emerald-700/50 font-semibold px-8 py-3.5 rounded-xl flex items-center justify-center transition-all"
             >
               Host an Event
-            </Link>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Capabilities Overview */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-3 gap-8">
-          
           <div className="bg-emerald-900/60 border border-emerald-800/80 p-7 rounded-2xl shadow-lg backdrop-blur-sm space-y-4">
             <div className="w-12 h-12 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-xl flex items-center justify-center font-bold">
               <Ticket className="w-6 h-6" />
@@ -130,11 +138,9 @@ export default function Home() {
               Hire vetted sound engineers, DJs, caterers, and venues directly with transparent pricing and review histories.
             </p>
           </div>
-
         </div>
       </section>
 
-      {/* Verified Vendor Marketplace Card */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link 
           to="/marketplace" 
@@ -153,7 +159,6 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* Featured Events Listing */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-emerald-800/60 pb-4">
           <div>
@@ -187,37 +192,20 @@ export default function Home() {
         )}
       </section>
 
-      {/* Ticket Tiers Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
-            onClick={handleCloseModal}
-          />
-
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
           <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
-            <div className="absolute top-0 right-1/3 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <button 
-              onClick={handleCloseModal}
-              className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors"
-            >
+            <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
-
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
                 Event Overview
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">
-                {selectedEvent.title}
-              </h2>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">{selectedEvent.title}</h2>
             </div>
-
-            <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-              {selectedEvent.description}
-            </p>
-
+            <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">{selectedEvent.description}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-y border-emerald-900">
               <div className="flex items-center gap-3 text-emerald-200 text-sm">
                 <Calendar className="w-5 h-5 text-orange-400 flex-shrink-0" />
@@ -228,11 +216,8 @@ export default function Home() {
                 <span>{selectedEvent.location || 'Nairobi, Kenya'}</span>
               </div>
             </div>
-
             <div>
-              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">
-                Select Available Ticket
-              </h3>
+              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Available Ticket</h3>
               <div className="space-y-3">
                 {selectedEvent.ticket_tiers && selectedEvent.ticket_tiers.length > 0 ? (
                   selectedEvent.ticket_tiers.map((tier) => {
@@ -242,9 +227,7 @@ export default function Home() {
                         key={tier.id}
                         onClick={() => setSelectedTier(tier)}
                         className={`flex justify-between items-center p-4 rounded-xl cursor-pointer transition-all border ${
-                          isSelected
-                            ? 'bg-orange-950/40 border-orange-500 shadow-md shadow-orange-500/10'
-                            : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
+                          isSelected ? 'bg-orange-950/40 border-orange-500 shadow-md shadow-orange-500/10' : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -254,9 +237,7 @@ export default function Home() {
                             <span className="text-xs text-emerald-300/70">{tier.quantity_available} available</span>
                           </div>
                         </div>
-                        <span className="font-extrabold text-orange-400 text-base">
-                          KES {parseFloat(tier.price).toLocaleString()}
-                        </span>
+                        <span className="font-extrabold text-orange-400 text-base">KES {parseFloat(tier.price).toLocaleString()}</span>
                       </div>
                     );
                   })
@@ -270,11 +251,8 @@ export default function Home() {
               <div className="pt-4 border-t border-emerald-900 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-emerald-400/70 block">Total Price</span>
-                  <span className="text-xl font-extrabold text-white">
-                    KES {parseFloat(selectedTier.price).toLocaleString()}
-                  </span>
+                  <span className="text-xl font-extrabold text-white">KES {parseFloat(selectedTier.price).toLocaleString()}</span>
                 </div>
-
                 <button 
                   onClick={handlePurchaseTicket}
                   className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-orange-500/25 flex items-center gap-2 transition-all"
@@ -287,7 +265,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
