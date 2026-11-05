@@ -12,12 +12,24 @@ export default function Events() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTier, setSelectedTier] = useState(null);
 
+  // Host Event Modal States
+  const [isHostingOpen, setIsHostingOpen] = useState(false);
+  const [hostingForm, setHostingForm] = useState({
+    title: '',
+    description: '',
+    category: 'Music',
+    date: '',
+    location: '',
+  });
+  const [hostingLoading, setHostingLoading] = useState(false);
+  const [hostingError, setHostingError] = useState('');
+
   // Check auth state and role
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
 
-  useEffect(() => {
+  const fetchEvents = () => {
     api.get('/events/')
       .then((response) => {
         setEvents(response.data);
@@ -29,6 +41,10 @@ export default function Events() {
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchEvents();
   }, []);
 
   const handleOpenModal = (event) => {
@@ -57,6 +73,24 @@ export default function Events() {
     });
   };
 
+  const handleHostSubmit = async (e) => {
+    e.preventDefault();
+    setHostingLoading(true);
+    setHostingError('');
+
+    try {
+      await api.post('/events/', hostingForm);
+      setIsHostingOpen(false);
+      setHostingForm({ title: '', description: '', category: 'Music', date: '', location: '' });
+      fetchEvents(); // Refresh event list
+    } catch (err) {
+      console.error('Failed to create event:', err);
+      setHostingError('Failed to host event. Please check your inputs and try again.');
+    } finally {
+      setHostingLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
       
@@ -72,10 +106,10 @@ export default function Events() {
           </p>
         </div>
 
-        {/* Organizer Host Event Section Banner/Button */}
+        {/* Organizer Host Event Button */}
         {isOrganizer && (
           <button
-            onClick={() => navigate('/events/create')}
+            onClick={() => setIsHostingOpen(true)}
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all shrink-0"
           >
             <PlusCircle className="w-5 h-5" />
@@ -105,6 +139,110 @@ export default function Events() {
               onCheckTiers={handleOpenModal} 
             />
           ))}
+        </div>
+      )}
+
+      {/* Host an Event Modal */}
+      {isHostingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
+            onClick={() => setIsHostingOpen(false)}
+          />
+
+          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
+            <button 
+              onClick={() => setIsHostingOpen(false)}
+              className="absolute top-4 right-4 bg-emerald-900/85 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
+                Organizer Portal
+              </span>
+              <h2 className="text-2xl font-extrabold text-white mt-3 flex items-center gap-2">
+                <PlusCircle className="w-6 h-6 text-orange-500" /> Host a New Event
+              </h2>
+            </div>
+
+            {hostingError && (
+              <div className="p-3 bg-red-950/80 border border-red-800 rounded-xl text-red-300 text-xs text-center">
+                {hostingError}
+              </div>
+            )}
+
+            <form onSubmit={handleHostSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-emerald-300 mb-1">Event Title</label>
+                <input
+                  type="text"
+                  required
+                  value={hostingForm.title}
+                  onChange={(e) => setHostingForm({ ...hostingForm, title: e.target.value })}
+                  placeholder="e.g. Nairobi Tech Summit 2026"
+                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Category</label>
+                  <input
+                    type="text"
+                    required
+                    value={hostingForm.category}
+                    onChange={(e) => setHostingForm({ ...hostingForm, category: e.target.value })}
+                    placeholder="Tech, Music, Business"
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={hostingForm.date}
+                    onChange={(e) => setHostingForm({ ...hostingForm, date: e.target.value })}
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-emerald-300 mb-1">Location</label>
+                <input
+                  type="text"
+                  required
+                  value={hostingForm.location}
+                  onChange={(e) => setHostingForm({ ...hostingForm, location: e.target.value })}
+                  placeholder="e.g. KICC, Nairobi"
+                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-emerald-300 mb-1">Description</label>
+                <textarea
+                  rows="3"
+                  required
+                  value={hostingForm.description}
+                  onChange={(e) => setHostingForm({ ...hostingForm, description: e.target.value })}
+                  placeholder="Provide event details..."
+                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={hostingLoading}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 transition-all mt-4"
+              >
+                {hostingLoading ? 'Publishing Event...' : 'Publish Event'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
