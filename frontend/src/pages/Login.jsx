@@ -27,8 +27,13 @@ export default function Login() {
 
     try {
       const data = await authService.login(formData.email, formData.password);
+      
+      // --- FIX: Save all user data to local storage so UI permissions work ---
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
+      localStorage.setItem('user_id', data.user_id);
+      localStorage.setItem('username', data.username);
+      localStorage.setItem('user_role', data.role);
 
       if (redirectData.returnTo) {
         navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
@@ -45,9 +50,8 @@ export default function Login() {
 
   const realGoogleLogin = useGoogleLogin({
     onSuccess: (tokenResponse) => {
-      // tokenResponse.access_token is the real token returned by Google's servers
       setPendingGoogleToken(tokenResponse.access_token);
-      setShowRoleModal(true); // Open modal to prompt first-time user role selection
+      setShowRoleModal(true); 
     },
     onError: () => {
       setError('Google sign-in was unsuccessful. Please try again.');
@@ -58,10 +62,13 @@ export default function Login() {
     setShowRoleModal(false);
     setLoading(true);
     try {
-      // Sends real Google access token and chosen role to backend endpoint (/api/auth/google/)
       const data = await authService.googleLogin(pendingGoogleToken, role);
+      
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
+      if (data.user?.pk) localStorage.setItem('user_id', data.user.pk);
+      if (data.user?.username) localStorage.setItem('username', data.user.username);
+      localStorage.setItem('user_role', data.user?.role || role);
 
       if (redirectData.returnTo) {
         navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
