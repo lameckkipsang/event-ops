@@ -10,7 +10,6 @@ from rest_framework import status, permissions, generics
 from .models import Ticket, TicketTier
 from events.models import Event
 from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer, EventSerializer
-from marketplace.models import BookingRequest
 
 class TicketPurchaseView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -60,6 +59,7 @@ class TicketCheckInView(APIView):
 
         user = request.user
         if getattr(user, 'role', None) == 'SECURITY':
+            BookingRequest = apps.get_model('marketplace', 'BookingRequest')
             has_event_access = BookingRequest.objects.filter(
                 event=ticket.event,
                 package__vendor=user,
@@ -189,20 +189,20 @@ class EventListView(generics.ListCreateAPIView):
 
 class OrganizerDashboardView(APIView):
     """
-    Aggregates ticket sales, revenue metrics, and attendee contact info (including failed payments)
-    for the Organizer's Dashboard.
+    Aggregates ticket sales, revenue metrics, attendee contact info,
+    AND outgoing vendor requests for the Organizer's Dashboard in a single payload.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        # Dynamically load Transaction to prevent circular imports
         Transaction = apps.get_model('finance', 'Transaction')
+        BookingRequest = apps.get_model('marketplace', 'BookingRequest')
         
         events = Event.objects.filter(organizer=user)
         event_data = [{"id": e.id, "title": e.title} for e in events]
         
-        # Fetch all ticket transactions related to this organizer's events
+        # Fetch Ticket Sales & Metrics
         transactions = Transaction.objects.filter(
             ticket__event__organizer=user
         ).select_related('ticket', 'ticket__attendee').order_by('-created_at')
@@ -235,6 +235,19 @@ class OrganizerDashboardView(APIView):
                 "attendee_email": email,
                 "attendee_phone": phone
             })
+
+        # Fetch Outgoing Vendor Bookings 
+        vendor_requests = BookingRequest.objects.filter(organizer=user).select_related('package', 'event').order_by('-created_at')
+        vendor_data = []
+        for b in vendor_requests:
+            vendor_data.append({
+                "id": b.id,
+                "package_title": b.package.title,
+                "package_price": b.package.price,
+                "event_title": b.event.title,
+                "status": b.status,
+                "created_at": b.created_at
+            })
             
         return Response({
             "events": event_data,
@@ -243,5 +256,6 @@ class OrganizerDashboardView(APIView):
                 "completed_sales": completed_count,
                 "failed_sales": failed_count
             },
-            "sales": sales_data
+            "sales": sales_data,
+            "vendor_bookings": vendor_data
         }, status=status.HTTP_200_OK)
