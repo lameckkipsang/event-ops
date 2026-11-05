@@ -1,7 +1,7 @@
 from django.urls import path, include 
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import UserViewSet, CustomTokenObtainPairView, GoogleLogin, LoginView, SignupView, UserProfileView, NotificationListView
+from .views import (UserViewSet, CustomTokenObtainPairView, GoogleLogin, LoginView, SignupView, UserProfileView, NotificationListView, NotificationHistoryView)
 from dj_rest_auth.views import PasswordResetConfirmView
 
 router = DefaultRouter()
@@ -10,6 +10,8 @@ router.register(r'accounts', UserViewSet, basename='user')
 urlpatterns = [
     path('accounts/profile/', UserProfileView.as_view(), name='user-profile'),
     path('accounts/notifications/', NotificationListView.as_view(), name='user-notifications'),
+    path('accounts/notifications/history/', NotificationHistoryView.as_view(), name='user-notifications-history'),
+    path('accounts/notifications/<int:pk>/', NotificationHistoryView.as_view(), name='mark-notification-read'),
     path('', include(router.urls)),
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
