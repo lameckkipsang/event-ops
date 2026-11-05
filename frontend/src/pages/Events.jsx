@@ -12,19 +12,19 @@ export default function Events() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTier, setSelectedTier] = useState(null);
 
-  // Host Event Modal States
   const [isHostingOpen, setIsHostingOpen] = useState(false);
   const [hostingForm, setHostingForm] = useState({
     title: '',
     description: '',
-    category: 'Music',
-    date: '',
-    location: '',
+    category: '',
+    start_date: '',
+    end_date: '',
+    venue_name: '',
+    venue_location: '',
   });
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState('');
 
-  // Check auth state and role
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
@@ -78,14 +78,43 @@ export default function Events() {
     setHostingLoading(true);
     setHostingError('');
 
+    // Formats dates to YYYY-MM-DD
+    const formatDate = (val) => {
+      if (!val) return new Date().toISOString().split('T')[0];
+      if (val.includes('/')) {
+        const [day, month, year] = val.split('/');
+        return `${year}-${month}-${day}`;
+      }
+      return val;
+    };
+
+    const payload = {
+      title: hostingForm.title,
+      description: hostingForm.description,
+      category: hostingForm.category,
+      start_date: formatDate(hostingForm.start_date),
+      end_date: formatDate(hostingForm.end_date || hostingForm.start_date),
+      venue_name: hostingForm.venue_name,
+      venue_location: hostingForm.venue_location || hostingForm.venue_name,
+    };
+
     try {
-      await api.post('/events/', hostingForm);
+      await api.post('/events/', payload);
       setIsHostingOpen(false);
-      setHostingForm({ title: '', description: '', category: 'Music', date: '', location: '' });
-      fetchEvents(); // Refresh event list
+      setHostingForm({
+        title: '',
+        description: '',
+        category: '',
+        start_date: '',
+        end_date: '',
+        venue_name: '',
+        venue_location: '',
+      });
+      fetchEvents();
     } catch (err) {
-      console.error('Failed to create event:', err);
-      setHostingError('Failed to host event. Please check your inputs and try again.');
+      console.error('Failed to create event:', err.response?.data || err);
+      const serverMsg = err.response?.data ? JSON.stringify(err.response.data) : 'Please check your inputs and try again.';
+      setHostingError(`Failed to host event: ${serverMsg}`);
     } finally {
       setHostingLoading(false);
     }
@@ -93,20 +122,15 @@ export default function Events() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
-      
-      {/* Header & Host an Event Action */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-emerald-800/60 pb-6">
         <div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-emerald-400 flex items-center gap-3">
             <Calendar className="w-8 h-8 text-orange-500" />
             All Events
           </h1>
-          <p className="text-emerald-200/70 mt-1">
-            Explore upcoming events and check available ticket tiers.
-          </p>
+          <p className="text-emerald-200/70 mt-1">Explore upcoming events and check available ticket tiers.</p>
         </div>
 
-        {/* Organizer Host Event Button */}
         {isOrganizer && (
           <button
             onClick={() => setIsHostingOpen(true)}
@@ -123,9 +147,7 @@ export default function Events() {
           <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
         </div>
       ) : error ? (
-        <div className="p-6 bg-emerald-900/40 border border-emerald-800 rounded-2xl text-center text-emerald-200 text-sm">
-          {error}
-        </div>
+        <div className="p-6 bg-emerald-900/40 border border-emerald-800 rounded-2xl text-center text-emerald-200 text-sm">{error}</div>
       ) : events.length === 0 ? (
         <div className="p-12 bg-emerald-900/40 border border-emerald-800 rounded-2xl text-center space-y-2">
           <p className="text-emerald-200 text-base font-medium">No events available right now.</p>
@@ -133,31 +155,18 @@ export default function Events() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
-            <EventCard 
-              key={event.id} 
-              event={event} 
-              onCheckTiers={handleOpenModal} 
-            />
+            <EventCard key={event.id} event={event} onCheckTiers={handleOpenModal} />
           ))}
         </div>
       )}
 
-      {/* Host an Event Modal */}
       {isHostingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
-            onClick={() => setIsHostingOpen(false)}
-          />
-
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={() => setIsHostingOpen(false)} />
           <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
-            <button 
-              onClick={() => setIsHostingOpen(false)}
-              className="absolute top-4 right-4 bg-emerald-900/85 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors"
-            >
+            <button onClick={() => setIsHostingOpen(false)} className="absolute top-4 right-4 bg-emerald-900/85 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
-
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
                 Organizer Portal
@@ -168,9 +177,7 @@ export default function Events() {
             </div>
 
             {hostingError && (
-              <div className="p-3 bg-red-950/80 border border-red-800 rounded-xl text-red-300 text-xs text-center">
-                {hostingError}
-              </div>
+              <div className="p-3 bg-red-950/80 border border-red-800 rounded-xl text-red-300 text-xs text-center">{hostingError}</div>
             )}
 
             <form onSubmit={handleHostSubmit} className="space-y-4">
@@ -181,8 +188,8 @@ export default function Events() {
                   required
                   value={hostingForm.title}
                   onChange={(e) => setHostingForm({ ...hostingForm, title: e.target.value })}
-                  placeholder="e.g. Nairobi Tech Summit 2026"
-                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                  placeholder="e.g. Zindua Capstone Presentations"
+                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -194,32 +201,45 @@ export default function Events() {
                     required
                     value={hostingForm.category}
                     onChange={(e) => setHostingForm({ ...hostingForm, category: e.target.value })}
-                    placeholder="Tech, Music, Business"
-                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                    placeholder="e.g. Tech, Music"
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Date</label>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Start Date</label>
                   <input
                     type="date"
                     required
-                    value={hostingForm.date}
-                    onChange={(e) => setHostingForm({ ...hostingForm, date: e.target.value })}
+                    value={hostingForm.start_date}
+                    onChange={(e) => setHostingForm({ ...hostingForm, start_date: e.target.value, end_date: e.target.value })}
                     className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-emerald-300 mb-1">Location</label>
-                <input
-                  type="text"
-                  required
-                  value={hostingForm.location}
-                  onChange={(e) => setHostingForm({ ...hostingForm, location: e.target.value })}
-                  placeholder="e.g. KICC, Nairobi"
-                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Venue Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={hostingForm.venue_name}
+                    onChange={(e) => setHostingForm({ ...hostingForm, venue_name: e.target.value })}
+                    placeholder="e.g. Parklands Plaza"
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1">Venue Location</label>
+                  <input
+                    type="text"
+                    required
+                    value={hostingForm.venue_location}
+                    onChange={(e) => setHostingForm({ ...hostingForm, venue_location: e.target.value })}
+                    placeholder="e.g. Westlands, Nairobi"
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                  />
+                </div>
               </div>
 
               <div>
@@ -230,7 +250,7 @@ export default function Events() {
                   value={hostingForm.description}
                   onChange={(e) => setHostingForm({ ...hostingForm, description: e.target.value })}
                   placeholder="Provide event details..."
-                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                  className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -246,52 +266,32 @@ export default function Events() {
         </div>
       )}
 
-      {/* Ticket Tier Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div 
-            className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
-            onClick={handleCloseModal}
-          />
-
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
           <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
-            <div className="absolute top-0 right-1/3 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <button 
-              onClick={handleCloseModal}
-              className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors"
-            >
+            <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
-
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
                 Event Overview
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">
-                {selectedEvent.title}
-              </h2>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">{selectedEvent.title}</h2>
             </div>
-
-            <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-              {selectedEvent.description}
-            </p>
-
+            <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">{selectedEvent.description}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-y border-emerald-900">
               <div className="flex items-center gap-3 text-emerald-200 text-sm">
                 <Calendar className="w-5 h-5 text-orange-400 flex-shrink-0" />
-                <span>{new Date(selectedEvent.date || selectedEvent.created_at).toLocaleDateString()}</span>
+                <span>{new Date(selectedEvent.start_date || selectedEvent.date || selectedEvent.created_at).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-3 text-emerald-200 text-sm">
                 <MapPin className="w-5 h-5 text-orange-400 flex-shrink-0" />
-                <span>{selectedEvent.location || 'Nairobi, Kenya'}</span>
+                <span>{selectedEvent.venue_location || selectedEvent.location || 'Nairobi, Kenya'}</span>
               </div>
             </div>
-
             <div>
-              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">
-                Select Available Ticket
-              </h3>
+              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Available Ticket</h3>
               <div className="space-y-3">
                 {selectedEvent.ticket_tiers && selectedEvent.ticket_tiers.length > 0 ? (
                   selectedEvent.ticket_tiers.map((tier) => {
@@ -301,9 +301,7 @@ export default function Events() {
                         key={tier.id}
                         onClick={() => setSelectedTier(tier)}
                         className={`flex justify-between items-center p-4 rounded-xl cursor-pointer transition-all border ${
-                          isSelected
-                            ? 'bg-orange-950/40 border-orange-500 shadow-md shadow-orange-500/10'
-                            : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
+                          isSelected ? 'bg-orange-950/40 border-orange-500 shadow-md shadow-orange-500/10' : 'bg-emerald-900/40 border-emerald-800/60 hover:border-emerald-600'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -313,9 +311,7 @@ export default function Events() {
                             <span className="text-xs text-emerald-300/70">{tier.quantity_available} available</span>
                           </div>
                         </div>
-                        <span className="font-extrabold text-orange-400 text-base">
-                          KES {parseFloat(tier.price).toLocaleString()}
-                        </span>
+                        <span className="font-extrabold text-orange-400 text-base">KES {parseFloat(tier.price).toLocaleString()}</span>
                       </div>
                     );
                   })
@@ -329,11 +325,8 @@ export default function Events() {
               <div className="pt-4 border-t border-emerald-900 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-emerald-400/70 block">Total Price</span>
-                  <span className="text-xl font-extrabold text-white">
-                    KES {parseFloat(selectedTier.price).toLocaleString()}
-                  </span>
+                  <span className="text-xl font-extrabold text-white">KES {parseFloat(selectedTier.price).toLocaleString()}</span>
                 </div>
-
                 <button 
                   onClick={handlePurchaseTicket}
                   className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-orange-500/25 flex items-center gap-2 transition-all"
