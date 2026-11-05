@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import ServiceCategory, VendorPackage, BookingRequest
+from users.models import Notification
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,7 +31,6 @@ class VendorPackageSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'vendor', 'created_at')
 
     def create(self, validated_data):
-        # Automatically assign the currently logged-in user as the package vendor
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['vendor'] = request.user
@@ -57,8 +57,17 @@ class BookingRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'organizer', 'status', 'created_at')
 
     def create(self, validated_data):
-        # Automatically assign the currently logged-in user as the booking organizer
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['organizer'] = request.user
-        return super().create(validated_data)
+            
+        booking = super().create(validated_data)
+        
+        Notification.objects.create(
+            user=booking.package.vendor,
+            title="New Booking Request!",
+            message=f"Organizer @{request.user.username} wants to book '{booking.package.title}'. Click to review.",
+            link="/vendor/dashboard"
+        )
+        
+        return booking
