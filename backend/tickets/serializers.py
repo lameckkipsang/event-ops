@@ -47,6 +47,14 @@ class TicketPurchaseSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         event = attrs.get('event')
         tier = attrs.get('tier')
+        request = self.context.get('request')
+
+        # Prevent organizers from buying tickets to their own events
+        if request and hasattr(request, 'user'):
+            if event.organizer == request.user:
+                raise serializers.ValidationError(
+                    {"error": "Security Exception: You cannot purchase tickets to your own event."}
+                )
 
         # Ensure the selected ticket tier belongs to the specified event
         if tier.event != event:
