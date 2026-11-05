@@ -7,8 +7,8 @@ export default function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Extract item details and type passed via navigation state
-  const { item, type } = location.state || {};
+  // Extract item details, type, and optional eventId passed via navigation state
+  const { item, type, eventId } = location.state || {};
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,20 +44,35 @@ export default function Payment() {
       formattedPhone = '254' + formattedPhone.slice(1);
     }
 
-    // Explicitly determine payment type to avoid lookup collisions between tickets and vendor bookings
+    // Determine resolved type safely
     const resolvedType = type || (item.ticket_type || item.tier_id ? 'event_ticket' : 'vendor_booking');
 
+    // Route cleanly to dedicated separate endpoints
+    const endpoint = resolvedType === 'event_ticket'
+      ? 'finance/stk-push/ticket/'
+      : 'finance/stk-push/vendor/';
+
+    // Construct precise payload for the chosen endpoint
+    const payload = {
+      phone_number: formattedPhone,
+      amount: item.price || item.cost,
+    };
+
+    if (resolvedType === 'event_ticket') {
+      payload.ticket_tier_id = item.id;
+    } else {
+      payload.package_id = item.id;
+      // Resolve event_id from multiple possible locations in state or item object
+      payload.event_id = eventId || item.event || item.event_id || (typeof item.event === 'object' ? item.event?.id : null);
+    }
+
     try {
-      await api.post('finance/stk-push/', {
-        phone_number: formattedPhone,
-        booking_id: item.id,
-        amount: item.price || item.cost,
-        type: resolvedType,
-      });
+      await api.post(endpoint, payload);
       setPaymentSuccess(true);
     } catch (err) {
       console.error('Payment initiation error:', err);
-      setError('Failed to initiate M-Pesa STK Push. Please verify your phone number and try again.');
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to initiate M-Pesa STK Push. Please verify your phone number and try again.';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
