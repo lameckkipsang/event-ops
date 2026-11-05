@@ -12,15 +12,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'password', 'role', 'phone_number', 'company_name')
     def create(self, validated_data):
-        password = validated_data.pop('password') #removes the plain text password out of validated_data so that it can be hashed securely
-        # If username is not provided, fallback to using the part of email before '@'
+        password = validated_data.pop('password')
         if not validated_data.get('username'):
             email = validated_data.get('email')
             base_username = email.split('@')[0]
             unique_suffix = uuid.uuid4().hex[:6]
             validated_data['username'] = f"{base_username}_{unique_suffix}"
-        user = User(**validated_data) #makes new User object in memory using the remaining clean dict parameters eg username, email, role
-        user.set_password(password) #this is where the hashing takes place
+        user = User(**validated_data) 
+        user.set_password(password) 
         user.save()
         return user
 
@@ -32,21 +31,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        # Extract email and password from the request data
         email = attrs.get("email")
         password = attrs.get("password")
 
         if email and password:
-            # Authenticate using Django's backend with email
             user = authenticate(request=self.context.get('request'), email=email, password=password)
             
             if not user:
                 raise serializers.ValidationError("No active account found with the given credentials.")
             
-            # Generate tokens for the authenticated user
             refresh = self.get_token(user)
+            
             return {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
+                'user_id': user.id,
+                'username': user.username,
+                'role': user.role
             }
         raise serializers.ValidationError("Must include 'email' and 'password'.")
