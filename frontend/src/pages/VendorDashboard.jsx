@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, CheckCircle, XCircle, Clock, Calendar, AlertCircle, Loader2 } from 'lucide-react';
+import { Store, CheckCircle, XCircle, Clock, Calendar, AlertCircle, Loader2, Bell } from 'lucide-react';
 import api from '../services/api';
 
 export default function VendorDashboard() {
@@ -14,7 +14,7 @@ export default function VendorDashboard() {
       setBookings(response.data);
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
-      setError('Failed to load incoming vendor bookings.');
+      setError('Failed to load incoming vendor booking requests.');
     } finally {
       setLoading(false);
     }
@@ -29,7 +29,6 @@ export default function VendorDashboard() {
     setError('');
     try {
       await api.patch(`marketplace/bookings/${bookingId}/status/`, { status: newStatus });
-      // Refresh booking list after update
       await fetchBookings();
     } catch (err) {
       console.error('Failed to update booking status:', err);
@@ -51,15 +50,15 @@ export default function VendorDashboard() {
     <div className="max-w-6xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-emerald-800/80 pb-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
-            Vendor Portal
+          <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30 flex items-center gap-1.5 w-max">
+            <Bell className="w-3.5 h-3.5" /> Vendor Notifications Portal
           </span>
           <h1 className="text-3xl font-extrabold mt-2 flex items-center gap-3">
             <Store className="w-8 h-8 text-orange-500" />
             Incoming Booking Requests
           </h1>
           <p className="text-emerald-200/70 text-sm mt-1">
-            Manage service bookings, review event schedules, and accept or decline requests.
+            Review event booking inquiries for your services and choose to accept or decline.
           </p>
         </div>
       </div>
@@ -73,7 +72,7 @@ export default function VendorDashboard() {
 
       {bookings.length === 0 ? (
         <div className="p-12 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm space-y-2">
-          <p>No booking requests found for your vendor packages.</p>
+          <p>No incoming booking notifications or requests right now.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -110,10 +109,12 @@ export default function VendorDashboard() {
                   </h3>
 
                   <div className="text-xs text-emerald-300/80 space-y-1">
-                    <p>Booked by Organizer: <span className="font-semibold text-white">@{booking.organizer_username}</span></p>
+                    <p>
+                      Organizer Contact: <span className="font-semibold text-white">@{booking.organizer_username}</span>
+                    </p>
                     <div className="flex items-center gap-1.5 text-emerald-400/90 pt-1">
                       <Calendar className="w-3.5 h-3.5 text-orange-400" />
-                      <span>Requested on: {new Date(booking.created_at).toLocaleString()}</span>
+                      <span>Received: {new Date(booking.created_at).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -127,7 +128,7 @@ export default function VendorDashboard() {
                         className="flex-1 md:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-600/20"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        {actionLoading === booking.id ? 'Processing...' : 'Accept'}
+                        {actionLoading === booking.id ? 'Updating...' : 'Accept Request'}
                       </button>
                       <button
                         disabled={actionLoading === booking.id}
@@ -140,7 +141,7 @@ export default function VendorDashboard() {
                     </>
                   ) : (
                     <span className="text-xs text-emerald-400/70 font-semibold italic">
-                      Action finalized ({booking.status})
+                      Status Finalized ({booking.status})
                     </span>
                   )}
                 </div>
