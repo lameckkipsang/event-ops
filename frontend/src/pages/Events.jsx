@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2 } from 'lucide-react';
+import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle } from 'lucide-react';
 import EventCard from '../components/EventCard';
 import api from '../services/api';
 
@@ -11,6 +11,11 @@ export default function Events() {
   const [error, setError] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTier, setSelectedTier] = useState(null);
+
+  // Check auth state and role
+  const token = localStorage.getItem('access_token');
+  const role = localStorage.getItem('user_role') || '';
+  const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
 
   useEffect(() => {
     api.get('/events/')
@@ -39,7 +44,6 @@ export default function Events() {
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
 
-    // Backend validates authentication when payment/purchase endpoints are hit
     navigate('/payment', {
       state: {
         item: {
@@ -55,14 +59,29 @@ export default function Events() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
-      <div className="border-b border-emerald-800/60 pb-6">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-emerald-400 flex items-center gap-3">
-          <Calendar className="w-8 h-8 text-orange-500" />
-          All Events
-        </h1>
-        <p className="text-emerald-200/70 mt-1">
-          Explore upcoming events and check available ticket tiers.
-        </p>
+      
+      {/* Header & Host an Event Action */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-emerald-800/60 pb-6">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-emerald-400 flex items-center gap-3">
+            <Calendar className="w-8 h-8 text-orange-500" />
+            All Events
+          </h1>
+          <p className="text-emerald-200/70 mt-1">
+            Explore upcoming events and check available ticket tiers.
+          </p>
+        </div>
+
+        {/* Organizer Host Event Section Banner/Button */}
+        {isOrganizer && (
+          <button
+            onClick={() => navigate('/events/create')}
+            className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all shrink-0"
+          >
+            <PlusCircle className="w-5 h-5" />
+            <span>Host a New Event</span>
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -89,6 +108,7 @@ export default function Events() {
         </div>
       )}
 
+      {/* Ticket Tier Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div 
