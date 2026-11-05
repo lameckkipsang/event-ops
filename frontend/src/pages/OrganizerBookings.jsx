@@ -9,7 +9,9 @@ export default function OrganizerBookings() {
 
   const fetchOrganizerBookings = async () => {
     try {
-      const response = await api.get('marketplace/organizer/bookings/');
+      // FIX: Changed from 'marketplace/organizer/bookings/' to 'bookings/'
+      // The backend automatically filters to show only this organizer's bookings
+      const response = await api.get('bookings/');
       setBookings(response.data);
     } catch (err) {
       console.error('Failed to fetch organizer bookings:', err);

@@ -10,7 +10,7 @@ export default function VendorDashboard() {
 
   const fetchBookings = async () => {
     try {
-      const response = await api.get('marketplace/bookings/');
+      const response = await api.get('bookings/');
       setBookings(response.data);
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
@@ -28,7 +28,7 @@ export default function VendorDashboard() {
     setActionLoading(bookingId);
     setError('');
     try {
-      await api.patch(`marketplace/bookings/${bookingId}/status/`, { status: newStatus });
+      await api.patch(`bookings/${bookingId}/status/`, { status: newStatus });
       await fetchBookings();
     } catch (err) {
       console.error('Failed to update booking status:', err);
