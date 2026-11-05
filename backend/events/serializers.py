@@ -6,6 +6,7 @@ from tickets.models import TicketTier
 class EventSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
     ticket_tiers = TicketTierSerializer(many=True, required=False)
+    
     class Meta:
         model = Event
         fields = (
@@ -29,6 +30,7 @@ class EventSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['organizer'] = request.user
+            
         # Extract ticket tiers data if provided in the payload
         tiers_data = validated_data.pop('ticket_tiers', [])
         
@@ -40,3 +42,21 @@ class EventSerializer(serializers.ModelSerializer):
             TicketTier.objects.create(event=event, **tier_data)
 
         return event
+
+    def update(self, instance, validated_data):
+        # Extract ticket tiers data if provided in the payload
+        tiers_data = validated_data.pop('ticket_tiers', None)
+
+        # Update standard event fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # If ticket tiers were provided in the update payload, update them
+        if tiers_data is not None:
+            # Clear existing tiers and create new ones (or sync them)
+            instance.ticket_tiers.all().delete()
+            for tier_data in tiers_data:
+                TicketTier.objects.create(event=instance, **tier_data)
+
+        return instance
