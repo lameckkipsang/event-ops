@@ -1,16 +1,26 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Calendar, Store, ShieldCheck, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const { addToast } = useToast(); 
 
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
 
   const handleLogout = () => {
     localStorage.clear();
+    
+    addToast({ 
+      title: 'Signed Out Successfully', 
+      message: 'You have been logged out securely.', 
+      type: 'success' 
+    });
+    
     navigate('/login');
   };
 
@@ -27,7 +37,6 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center relative">
           
-          {/* Brand Logo (EO links home, EventOps text disabled as a link) */}
           <div className="flex items-center gap-3 z-10">
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/30">
@@ -39,7 +48,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Centered Nav Links */}
           <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
             <Link to="/" className={linkClass('/')}>
               <Home className="w-4 h-4" /> Home
@@ -64,7 +72,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Auth / Profile Actions */}
           <div className="flex items-center gap-3 z-10">
             {token ? (
               <>

@@ -4,11 +4,14 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react';
 import { authService } from '../services/authApi';
 import RoleSelectModal from '../components/RoleSelectModal';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectData = location.state || {};
+  
+  const { addToast } = useToast(); 
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -28,12 +31,17 @@ export default function Login() {
     try {
       const data = await authService.login(formData.email, formData.password);
       
-      // --- FIX: Save all user data to local storage so UI permissions work ---
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
       localStorage.setItem('user_id', data.user_id);
       localStorage.setItem('username', data.username);
       localStorage.setItem('user_role', data.role);
+
+      addToast({ 
+        title: 'Login Successful', 
+        message: 'Welcome back to EventOps!', 
+        type: 'success' 
+      });
 
       if (redirectData.returnTo) {
         navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
@@ -43,6 +51,7 @@ export default function Login() {
     } catch (err) {
       console.error('Login error:', err);
       setError('Invalid email or password.');
+      addToast({ title: 'Login Failed', message: 'Invalid credentials. Try again.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -70,14 +79,20 @@ export default function Login() {
       if (data.user?.username) localStorage.setItem('username', data.user.username);
       localStorage.setItem('user_role', data.user?.role || role);
 
+      addToast({ 
+        title: 'Google Account Linked', 
+        message: `Welcome to EventOps!`, 
+        type: 'success' 
+      });
+
       if (redirectData.returnTo) {
         navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
       } else {
         navigate('/');
       }
     } catch (err) {
-      console.error('Google OAuth backend validation error:', err);
-      setError('Google authentication failed on the server. Please try again.');
+      console.error('Google OAuth error:', err);
+      setError('Google authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
