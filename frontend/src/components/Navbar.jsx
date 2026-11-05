@@ -25,41 +25,47 @@ export default function Navbar() {
   return (
     <nav className="bg-emerald-950/90 border-b border-emerald-800/80 sticky top-0 z-50 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center gap-8">
+        <div className="flex justify-between h-16 items-center relative">
+          
+          {/* Brand Logo (EO links home, EventOps text disabled as a link) */}
+          <div className="flex items-center gap-3 z-10">
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/30">
                 EO
               </div>
-              <span className="font-extrabold text-lg tracking-tight text-white">EventOps</span>
             </Link>
-
-            <div className="hidden md:flex items-center gap-2">
-              <Link to="/" className={linkClass('/')}>
-                <Home className="w-4 h-4" /> Home
-              </Link>
-              <Link to="/events" className={linkClass('/events')}>
-                <Calendar className="w-4 h-4" /> Events
-              </Link>
-              <Link to="/marketplace" className={linkClass('/marketplace')}>
-                <Store className="w-4 h-4" /> Marketplace
-              </Link>
-
-              {role === 'VENDOR' && (
-                <Link to="/vendor/dashboard" className={linkClass('/vendor/dashboard')}>
-                  <LayoutDashboard className="w-4 h-4" /> Vendor Dashboard
-                </Link>
-              )}
-
-              {role === 'SECURITY' && (
-                <Link to="/security/check-in" className={linkClass('/security/check-in')}>
-                  <ShieldCheck className="w-4 h-4" /> Gate Check-In
-                </Link>
-              )}
+            <div className="flex items-center cursor-default select-none">
+              <span className="font-extrabold text-lg tracking-tight text-white">EventOps</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Centered Nav Links */}
+          <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+            <Link to="/" className={linkClass('/')}>
+              <Home className="w-4 h-4" /> Home
+            </Link>
+            <Link to="/events" className={linkClass('/events')}>
+              <Calendar className="w-4 h-4" /> Events
+            </Link>
+            <Link to="/marketplace" className={linkClass('/marketplace')}>
+              <Store className="w-4 h-4" /> Marketplace
+            </Link>
+
+            {role === 'VENDOR' && (
+              <Link to="/vendor/dashboard" className={linkClass('/vendor/dashboard')}>
+                <LayoutDashboard className="w-4 h-4" /> Vendor Dashboard
+              </Link>
+            )}
+
+            {role === 'SECURITY' && (
+              <Link to="/security/check-in" className={linkClass('/security/check-in')}>
+                <ShieldCheck className="w-4 h-4" /> Gate Check-In
+              </Link>
+            )}
+          </div>
+
+          {/* Auth / Profile Actions */}
+          <div className="flex items-center gap-3 z-10">
             {token ? (
               <>
                 <Link to="/profile" className={linkClass('/profile')}>
@@ -89,6 +95,7 @@ export default function Navbar() {
               </>
             )}
           </div>
+
         </div>
       </div>
     </nav>
