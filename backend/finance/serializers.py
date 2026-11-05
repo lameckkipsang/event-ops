@@ -7,6 +7,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     booking_tier = serializers.ReadOnlyField(source='booking.package.get_tier_display', default=None)
     ticket_title = serializers.ReadOnlyField(source='ticket.tier.event.title', default=None)
     ticket_type = serializers.ReadOnlyField(source='ticket.tier.ticket_type', default=None)
+    ticket_code = serializers.ReadOnlyField(source='ticket.ticket_code', default=None)
 
     class Meta:
         model = Transaction
@@ -20,6 +21,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'ticket',
             'ticket_title',
             'ticket_type',
+            'ticket_code',
             'amount',
             'phone_number',
             'checkout_request_id',
