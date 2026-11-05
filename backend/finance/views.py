@@ -24,6 +24,14 @@ class InitiateTicketSTKPushView(APIView):
 
         try:
             tier = TicketTier.objects.get(id=tier_id)
+            
+            # Prevent organizers from buying tickets to their own events
+            if tier.event.organizer == request.user:
+                return Response(
+                    {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
             payment_amount = int(float(request.data.get('amount') or tier.price))
             generated_code = f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
             
