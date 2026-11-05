@@ -25,7 +25,6 @@ class InitiateTicketSTKPushView(APIView):
         try:
             tier = TicketTier.objects.get(id=tier_id)
             
-            # Prevent organizers from buying tickets to their own events
             if tier.event.organizer == request.user:
                 return Response(
                     {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
@@ -88,7 +87,6 @@ class InitiateVendorBookingSTKPushView(APIView):
         if not package_id or not phone_number:
             return Response({"error": "package_id and phone_number are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Automatically fallback to organizer's event if event_id is not explicitly passed
         if not event_id:
             user_event = Event.objects.filter(organizer=request.user).first()
             if user_event:
@@ -151,6 +149,7 @@ class MpesaCallbackView(APIView):
             result_code = stk_callback.get('ResultCode')
 
             transaction_record = Transaction.objects.get(checkout_request_id=checkout_request_id)
+            from users.models import Notification
 
             if result_code == 0:
                 transaction_record.status = 'COMPLETED'
@@ -161,10 +160,40 @@ class MpesaCallbackView(APIView):
                         transaction_record.mpesa_receipt_number = item.get('Value')
                 
                 transaction_record.save()
+
+                if transaction_record.ticket:
+                    Notification.objects.create(
+                        user=transaction_record.ticket.event.organizer,
+                        title="New Ticket Sold! 🎉",
+                        message=f"You just sold a {transaction_record.ticket.tier.ticket_type} ticket for {transaction_record.ticket.event.title}.",
+                        link="/organizer/bookings"
+                    )
+                elif transaction_record.booking:
+                    Notification.objects.create(
+                        user=transaction_record.booking.package.vendor,
+                        title="Escrow Funded! 💰",
+                        message=f"Payment secured! Organizer @{transaction_record.organizer.username} funded escrow for {transaction_record.booking.package.title}.",
+                        link="/vendor/dashboard"
+                    )
+                    Notification.objects.create(
+                        user=transaction_record.organizer,
+                        title="Payment Successful",
+                        message=f"Your escrow payment for {transaction_record.booking.package.title} is now secured.",
+                        link="/organizer/bookings"
+                    )
+
             else:
                 transaction_record.status = 'FAILED'
                 transaction_record.escrow_status = 'CANCELLED'  
                 transaction_record.save()
+                
+                if transaction_record.ticket:
+                    Notification.objects.create(
+                        user=transaction_record.ticket.event.organizer,
+                        title="Failed Payment Alert ⚠️",
+                        message=f"A ticket purchase failed for {transaction_record.ticket.event.title}. Check your dashboard to follow up.",
+                        link="/organizer/bookings"
+                    )
 
         except Transaction.DoesNotExist:
             return Response({"error": "Transaction record not found."}, status=status.HTTP_404_NOT_FOUND)
