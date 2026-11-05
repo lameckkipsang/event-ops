@@ -127,17 +127,21 @@ export default function Profile() {
         >
           My Profile
         </button>
-        <button
-          onClick={() => setActiveTab('tickets_receipts')}
-          className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all ${
-            activeTab === 'tickets_receipts'
-              ? 'bg-orange-500 text-white font-bold shadow-lg shadow-orange-500/20'
-              : 'text-emerald-300/70 hover:text-white'
-          }`}
-        >
-          <Receipt className="w-4 h-4" />
-          Receipts & My Tickets
-        </button>
+        
+        {/* Hide tickets/receipts tab from Vendors and Security agencies */}
+        {user?.role !== 'VENDOR' && user?.role !== 'SECURITY' && (
+          <button
+            onClick={() => setActiveTab('tickets_receipts')}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all ${
+              activeTab === 'tickets_receipts'
+                ? 'bg-orange-500 text-white font-bold shadow-lg shadow-orange-500/20'
+                : 'text-emerald-300/70 hover:text-white'
+            }`}
+          >
+            <Receipt className="w-4 h-4" />
+            Receipts & My Tickets
+          </button>
+        )}
       </div>
 
       {error && (
@@ -324,7 +328,6 @@ export default function Profile() {
           )}
         </>
       ) : (
-        /* Receipts & My Tickets Section */
         <div className="space-y-6 pt-2">
           <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2 no-print">
             <Ticket className="w-6 h-6 text-orange-500" />
