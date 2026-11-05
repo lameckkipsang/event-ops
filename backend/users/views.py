@@ -59,14 +59,29 @@ class NotificationListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Fetch notifications that haven't popped up as toasts yet
         notifications = Notification.objects.filter(user=request.user, is_delivered=False).order_by('created_at')
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
 
     def patch(self, request):
-        # Mark the toasts as popped/delivered so they don't appear again
         notification_ids = request.data.get('ids', [])
         if notification_ids:
             Notification.objects.filter(id__in=notification_ids, user=request.user).update(is_delivered=True)
         return Response({"status": "marked as delivered"})
+
+class NotificationHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
