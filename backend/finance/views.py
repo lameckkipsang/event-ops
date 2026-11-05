@@ -7,91 +7,127 @@ from django.utils.crypto import get_random_string
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
 from tickets.models import TicketTier, Ticket
+from events.models import Event
 from .daraja import initiate_stk_push
 from django.conf import settings
-from .serializers import InitiatePaymentSerializer, TransactionSerializer
+from .serializers import TransactionSerializer
 
-class InitiateSTKPushView(APIView):
+class InitiateTicketSTKPushView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = InitiatePaymentSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        tier_id = request.data.get('ticket_tier_id') or request.data.get('booking_id')
+        phone_number = request.data.get('phone_number')
 
-        item_id = serializer.validated_data['booking_id']
-        phone_number = serializer.validated_data['phone_number']
-        payment_type = request.data.get('type')
+        if not tier_id or not phone_number:
+            return Response({"error": "ticket_tier_id and phone_number are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking_request = None
-        ticket_instance = None
-        payment_amount = int(float(request.data.get('amount', 1)))
-
-        # Event Ticket Purchase with matching ticket_code generation
-        if payment_type == 'event_ticket':
-            try:
-                tier = TicketTier.objects.get(id=item_id)
-                payment_amount = int(float(request.data.get('amount') or tier.price))
-                generated_code = f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
-                ticket_instance = Ticket.objects.create(
-                    event=tier.event,
-                    tier=tier,
-                    attendee=request.user,
-                    ticket_code=generated_code,
-                    is_checked_in=False
-                )
-            except TicketTier.DoesNotExist:
-                return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Route 2: Vendor Service Package Booking
-        else:
-            try:
-                booking_request = BookingRequest.objects.get(id=item_id, organizer=request.user)
-                payment_amount = int(float(request.data.get('amount') or booking_request.package.price))
-            except BookingRequest.DoesNotExist:
-                try:
-                    package = VendorPackage.objects.get(id=item_id)
-                    booking_request, created = BookingRequest.objects.get_or_create(
-                        organizer=request.user,
-                        package=package,
-                        defaults={'status': 'PENDING'}
-                    )
-                    payment_amount = int(float(package.price))
-                except VendorPackage.DoesNotExist:
-                    return Response({"error": "Package or booking request not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            tier = TicketTier.objects.get(id=tier_id)
+            payment_amount = int(float(request.data.get('amount') or tier.price))
+            generated_code = f"EVT-TCK-{uuid.uuid4().hex[:6].upper()}"
+            
+            ticket_instance = Ticket.objects.create(
+                event=tier.event,
+                tier=tier,
+                attendee=request.user,
+                ticket_code=generated_code,
+                is_checked_in=False
+            )
+        except TicketTier.DoesNotExist:
+            return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
 
         callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
-        reference_id = ticket_instance.id if ticket_instance else (booking_request.id if booking_request else item_id)
-
         daraja_response = initiate_stk_push(
             phone_number=phone_number,
             amount=payment_amount,
             callback_url=callback_url,
-            reference_id=reference_id
+            reference_id=ticket_instance.id
         )
 
         if daraja_response.get('ResponseCode') == '0':
-            checkout_request_id = daraja_response.get('CheckoutRequestID')
-            merchant_request_id = daraja_response.get('MerchantRequestID')
-
-            transaction = Transaction.objects.create(
-                organizer=request.user,
-                booking=booking_request,
+            transaction, created = Transaction.objects.update_or_create(
                 ticket=ticket_instance,
-                amount=payment_amount,
-                phone_number=phone_number,
-                checkout_request_id=checkout_request_id,
-                merchant_request_id=merchant_request_id,
-                status='PENDING',
-                escrow_status='HELD'
+                defaults={
+                    'organizer': request.user,
+                    'booking': None,
+                    'amount': payment_amount,
+                    'phone_number': phone_number,
+                    'checkout_request_id': daraja_response.get('CheckoutRequestID'),
+                    'merchant_request_id': daraja_response.get('MerchantRequestID'),
+                    'status': 'PENDING',
+                    'escrow_status': 'HELD'
+                }
             )
             return Response({
-                "message": "STK Push initiated successfully. Check your phone to complete payment.",
+                "message": "STK Push initiated successfully for ticket.",
                 "details": daraja_response,
                 "transaction_id": transaction.id,
-                "ticket_code": ticket_instance.ticket_code if ticket_instance else None
+                "ticket_code": ticket_instance.ticket_code
             }, status=status.HTTP_200_OK)
-        
+
+        return Response({"error": "Failed to initiate STK Push.", "details": daraja_response}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class InitiateVendorBookingSTKPushView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        package_id = request.data.get('package_id') or request.data.get('booking_id')
+        event_id = request.data.get('event_id')
+        phone_number = request.data.get('phone_number')
+
+        if not package_id or not phone_number:
+            return Response({"error": "package_id and phone_number are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Automatically fallback to organizer's event if event_id is not explicitly passed
+        if not event_id:
+            user_event = Event.objects.filter(organizer=request.user).first()
+            if user_event:
+                event_id = user_event.id
+            else:
+                return Response({"error": "event_id is required. Please create an event before booking vendor services."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            package = VendorPackage.objects.get(id=package_id)
+            booking_request, created = BookingRequest.objects.get_or_create(
+                organizer=request.user,
+                package=package,
+                event_id=event_id,
+                defaults={'status': 'PENDING'}
+            )
+            payment_amount = int(float(package.price))
+        except VendorPackage.DoesNotExist:
+            return Response({"error": "Vendor package not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        callback_url = getattr(settings, 'MPESA_CALLBACK_URL', '')
+        daraja_response = initiate_stk_push(
+            phone_number=phone_number,
+            amount=payment_amount,
+            callback_url=callback_url,
+            reference_id=booking_request.id
+        )
+
+        if daraja_response.get('ResponseCode') == '0':
+            transaction, created = Transaction.objects.update_or_create(
+                booking=booking_request,
+                defaults={
+                    'organizer': request.user,
+                    'ticket': None,
+                    'amount': payment_amount,
+                    'phone_number': phone_number,
+                    'checkout_request_id': daraja_response.get('CheckoutRequestID'),
+                    'merchant_request_id': daraja_response.get('MerchantRequestID'),
+                    'status': 'PENDING',
+                    'escrow_status': 'HELD'
+                }
+            )
+            return Response({
+                "message": "STK Push initiated successfully for vendor booking.",
+                "details": daraja_response,
+                "transaction_id": transaction.id
+            }, status=status.HTTP_200_OK)
+
         return Response({"error": "Failed to initiate STK Push.", "details": daraja_response}, status=status.HTTP_400_BAD_REQUEST)
 
 
