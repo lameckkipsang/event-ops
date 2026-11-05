@@ -33,6 +33,7 @@ class VendorPackageViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated(), IsVendorOrReadOnly()]
         return [permissions.AllowAny()]
+        
     def get_queryset(self):
         """
         Allow filtering packages by tier and category via query parameters.
@@ -48,6 +49,19 @@ class VendorPackageViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(category_id=category)
             
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        package = self.get_object()
+        
+        # Soft delete: hide from marketplace but preserve for organizers who booked it
+        package.is_available = False
+        package.title = f"{package.title} [DISCONTINUED]"
+        package.save()
+        
+        return Response(
+            {"message": "Service package discontinued. Existing organizers retain booking visibility."}, 
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 class BookingRequestViewSet(viewsets.ModelViewSet):
     queryset = BookingRequest.objects.all().order_by('-created_at')
@@ -67,6 +81,7 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
         elif getattr(user, 'role', None) == 'ORGANIZER':
             return BookingRequest.objects.filter(organizer=user)
         return BookingRequest.objects.none()
+        
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, pk=None):
         """
