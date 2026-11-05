@@ -46,17 +46,23 @@ export default function Home() {
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
 
-    navigate('/payment', {
-      state: {
-        item: {
-          id: selectedTier.id,
-          title: `${selectedEvent.title} - ${selectedTier.ticket_type}`,
-          price: selectedTier.price,
-          description: selectedEvent.description || 'Event Ticket Booking',
-        },
-        type: 'event_ticket',
+    const checkoutState = {
+      item: {
+        id: selectedTier.id,
+        title: `${selectedEvent.title} - ${selectedTier.ticket_type}`,
+        price: selectedTier.price,
+        description: selectedEvent.description || 'Event Ticket Booking',
       },
-    });
+      type: 'event_ticket',
+    };
+
+    // Boot unauthenticated users to login before checkout
+    if (!token) {
+      navigate('/login', { state: { returnTo: '/payment', ...checkoutState } });
+      return;
+    }
+
+    navigate('/payment', { state: checkoutState });
   };
 
   const handleHostClick = (e) => {
