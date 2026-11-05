@@ -34,8 +34,24 @@ export default function Events() {
 
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
-  const currentUsername = localStorage.getItem('username') || '';
-  const currentUserId = localStorage.getItem('user_id') || '';
+
+  // Helper to decode JWT access token to get user ID / username if not stored separately
+  const parseJwt = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const jwtData = token ? parseJwt(token) : null;
+  const currentUserId = localStorage.getItem('user_id') || jwtData?.user_id || jwtData?.sub || '';
+  const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
 
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
 
@@ -96,8 +112,8 @@ export default function Events() {
       venue_name: event.venue_name || '',
       venue_location: event.venue_location || '',
       ticket_type: event.ticket_tiers?.[0]?.ticket_type || 'Regular',
-      price: event.ticket_tiers?.[0]?.price || '',
-      quantity_available: event.ticket_tiers?.[0]?.quantity_available || '100',
+      price: event.ticket_tiers?.[0]?.price !== undefined ? String(event.ticket_tiers[0].price) : '',
+      quantity_available: event.ticket_tiers?.[0]?.quantity_available ? String(event.ticket_tiers[0].quantity_available) : '100',
     });
     setHostingError('');
     setSelectedEvent(null);
@@ -147,6 +163,8 @@ export default function Events() {
       return val;
     };
 
+    const parsedPrice = parseFloat(hostingForm.price);
+
     const payload = {
       title: hostingForm.title,
       description: hostingForm.description,
@@ -158,7 +176,7 @@ export default function Events() {
       ticket_tiers: [
         {
           ticket_type: hostingForm.ticket_type || 'Regular',
-          price: parseFloat(hostingForm.price) || 0,
+          price: isNaN(parsedPrice) ? 0 : parsedPrice,
           quantity_available: parseInt(hostingForm.quantity_available) || 100,
         }
       ]
@@ -182,13 +200,6 @@ export default function Events() {
       setHostingLoading(false);
     }
   };
-
-  // Helper check if the active user is the creator of the selected event
-  const isCreatorOfSelected = selectedEvent && (
-    selectedEvent.organizer_username === currentUsername ||
-    selectedEvent.organizer === currentUserId ||
-    selectedEvent.organizer_id === currentUserId
-  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
@@ -225,7 +236,15 @@ export default function Events() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
-            <EventCard key={event.id} event={event} onCheckTiers={handleOpenModal} />
+            <EventCard 
+              key={event.id} 
+              event={event} 
+              onCheckTiers={handleOpenModal} 
+              onEdit={handleOpenEditModal}
+              onDelete={handleDeleteEvent}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
+            />
           ))}
         </div>
       )}
@@ -376,7 +395,7 @@ export default function Events() {
         </div>
       )}
 
-      {/* Event Details & Ticket Purchasing / Owner Controls Modal */}
+      {/* Event Details & Ticket Purchasing Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
@@ -392,28 +411,6 @@ export default function Events() {
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">{selectedEvent.title}</h2>
               </div>
-
-              {/* Owner Action Buttons */}
-              {isCreatorOfSelected && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleOpenEditModal(selectedEvent)}
-                    className="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 p-2 rounded-xl border border-emerald-600/50 transition-colors flex items-center gap-1.5 text-xs font-bold"
-                    title="Edit Event"
-                  >
-                    <Edit className="w-4 h-4 text-orange-400" />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(selectedEvent.id)}
-                    className="bg-red-950/60 hover:bg-red-900 text-red-300 p-2 rounded-xl border border-red-800/80 transition-colors flex items-center gap-1.5 text-xs font-bold"
-                    title="Delete Event"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              )}
             </div>
 
             <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">{selectedEvent.description}</p>

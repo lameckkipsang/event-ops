@@ -1,7 +1,6 @@
-import { Calendar, MapPin, Ticket } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Edit, Trash2 } from 'lucide-react';
 
-export default function EventCard({ event, onCheckTiers }) {
-  // Find the lowest ticket tier price, or default to null
+export default function EventCard({ event, onCheckTiers, onEdit, onDelete, currentUserId, currentUsername }) {
   const startingPrice = event.ticket_tiers && event.ticket_tiers.length > 0
     ? Math.min(...event.ticket_tiers.map(tier => parseFloat(tier.price || 0)))
     : null;
@@ -9,21 +8,56 @@ export default function EventCard({ event, onCheckTiers }) {
   const eventDate = event.start_date || event.date || event.created_at;
   const eventLocation = event.venue_location || event.venue_name || event.location || 'Nairobi, Kenya';
 
+  const token = localStorage.getItem('access_token');
+
+  const isOwner = Boolean(token) && (
+    (event.organizer_username && currentUsername && event.organizer_username.toLowerCase() === currentUsername.toLowerCase()) ||
+    (event.organizer && String(event.organizer) === String(currentUserId)) ||
+    (event.organizer?.id && String(event.organizer.id) === String(currentUserId)) ||
+    (event.organizer_id && String(event.organizer_id) === String(currentUserId))
+  );
+
   return (
     <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm group flex flex-col justify-between">
       <div>
-        <div className="bg-emerald-950 p-4 relative border-b border-emerald-800/50">
-          {event.category && (
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/30">
-              {event.category}
-            </span>
-          )}
-          <h3 className="mt-3 text-xl font-bold text-white">
-            {event.title}
-          </h3>
-        </div>
+        {/* Always render header if category exists OR if the user is the owner */}
+        {(event.category || isOwner) && (
+          <div className="bg-emerald-950 p-4 relative border-b border-emerald-800/50 flex justify-between items-center">
+            {event.category ? (
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/30">
+                {event.category}
+              </span>
+            ) : <span />}
+
+            {isOwner && (
+              <div className="flex items-center gap-2 z-15 ml-auto">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onEdit && onEdit(event); }}
+                  className="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-orange-400 rounded-lg transition-colors border border-emerald-600/50 flex items-center gap-1.5 text-xs font-bold shadow"
+                  title="Edit Event"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete && onDelete(event.id); }}
+                  className="px-2.5 py-1.5 bg-red-950 hover:bg-red-900 text-red-300 rounded-lg transition-colors border border-red-800/80 flex items-center gap-1.5 text-xs font-bold shadow"
+                  title="Delete Event"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="p-5 space-y-3">
+          <h3 className="text-xl font-bold text-white">
+            {event.title}
+          </h3>
           {event.description && (
             <p className="text-emerald-200/80 text-sm line-clamp-2">
               {event.description}
