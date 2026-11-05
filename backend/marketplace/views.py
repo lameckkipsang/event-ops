@@ -8,6 +8,7 @@ from .serializers import (
     BookingRequestSerializer
 )
 from rest_framework.decorators import action
+from users.models import Notification
 
 # Create your views here.
 class IsVendorOrReadOnly(permissions.BasePermission):
@@ -47,6 +48,10 @@ class VendorPackageViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(tier=tier.upper())
         if category:
             queryset = queryset.filter(category_id=category)
+            
+        # Ensure discontinued packages are hidden from the marketplace listing
+        if self.action == 'list':
+            queryset = queryset.filter(is_available=True)
             
         return queryset
 
@@ -108,6 +113,13 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
 
         booking.status = new_status
         booking.save()
+
+        Notification.objects.create(
+            user=booking.organizer,
+            title="Booking Update",
+            message=f"Vendor @{user.username} has {new_status.lower()} your booking for '{booking.package.title}'.",
+            link="/organizer/bookings"
+        )
 
         serializer = self.get_serializer(booking)
         return Response({
