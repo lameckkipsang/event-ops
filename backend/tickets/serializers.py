@@ -5,7 +5,7 @@ from events.models import Event
 class TicketTierSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketTier
-        fields = ['id', 'event', 'ticket_type', 'price', 'quantity_available']
+        fields = ['id', 'event', 'ticket_type', 'price', 'quantity_available', 'description']
         read_only_fields = ['event']
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -61,9 +61,30 @@ class TicketPurchaseSerializer(serializers.ModelSerializer):
         return attrs
 
 class EventSerializer(serializers.ModelSerializer):
-    # This exposes the related ticket_tiers array in the GET /api/events response
-    ticket_tiers = TicketTierSerializer(many=True, read_only=True)
+    # Exposes the related ticket_tiers array in GET/POST/PUT requests
+    ticket_tiers = TicketTierSerializer(many=True, required=False)
 
     class Meta:
         model = Event
-        fields = '__all__'    
+        fields = '__all__'
+
+    def create(self, validated_data):
+        tiers_data = validated_data.pop('ticket_tiers', [])
+        event = super().create(validated_data)
+        for tier_data in tiers_data:
+            TicketTier.objects.create(event=event, **tier_data)
+        return event
+
+    def update(self, instance, validated_data):
+        tiers_data = validated_data.pop('ticket_tiers', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if tiers_data is not None:
+            instance.ticket_tiers.all().delete()
+            for tier_data in tiers_data:
+                TicketTier.objects.create(event=instance, **tier_data)
+
+        return instance
