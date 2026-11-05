@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle } from 'lucide-react';
+import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import EventCard from '../components/EventCard';
 import api from '../services/api';
 
@@ -9,10 +9,14 @@ export default function Events() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Selected Event Modal State
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTier, setSelectedTier] = useState(null);
 
+  // Hosting / Editing Modal State
   const [isHostingOpen, setIsHostingOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [hostingForm, setHostingForm] = useState({
     title: '',
     description: '',
@@ -21,12 +25,18 @@ export default function Events() {
     end_date: '',
     venue_name: '',
     venue_location: '',
+    ticket_type: 'Regular',
+    price: '',
+    quantity_available: '100',
   });
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState('');
 
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
+  const currentUsername = localStorage.getItem('username') || '';
+  const currentUserId = localStorage.getItem('user_id') || '';
+
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
 
   const fetchEvents = () => {
@@ -57,6 +67,56 @@ export default function Events() {
     setSelectedTier(null);
   };
 
+  const handleOpenCreateModal = () => {
+    setEditingEventId(null);
+    setHostingForm({
+      title: '',
+      description: '',
+      category: '',
+      start_date: '',
+      end_date: '',
+      venue_name: '',
+      venue_location: '',
+      ticket_type: 'Regular',
+      price: '',
+      quantity_available: '100',
+    });
+    setHostingError('');
+    setIsHostingOpen(true);
+  };
+
+  const handleOpenEditModal = (event) => {
+    setEditingEventId(event.id);
+    setHostingForm({
+      title: event.title || '',
+      description: event.description || '',
+      category: event.category || '',
+      start_date: event.start_date || event.date || '',
+      end_date: event.end_date || event.date || '',
+      venue_name: event.venue_name || '',
+      venue_location: event.venue_location || '',
+      ticket_type: event.ticket_tiers?.[0]?.ticket_type || 'Regular',
+      price: event.ticket_tiers?.[0]?.price || '',
+      quantity_available: event.ticket_tiers?.[0]?.quantity_available || '100',
+    });
+    setHostingError('');
+    setSelectedEvent(null);
+    setIsHostingOpen(true);
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
+    
+    try {
+      await api.delete(`/events/${eventId}/`);
+      setSelectedEvent(null);
+      fetchEvents();
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+      alert('Failed to delete event. You must be the event organizer to perform this action.');
+    }
+  };
+
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
 
@@ -78,7 +138,6 @@ export default function Events() {
     setHostingLoading(true);
     setHostingError('');
 
-    // Formats dates to YYYY-MM-DD
     const formatDate = (val) => {
       if (!val) return new Date().toISOString().split('T')[0];
       if (val.includes('/')) {
@@ -96,29 +155,40 @@ export default function Events() {
       end_date: formatDate(hostingForm.end_date || hostingForm.start_date),
       venue_name: hostingForm.venue_name,
       venue_location: hostingForm.venue_location || hostingForm.venue_name,
+      ticket_tiers: [
+        {
+          ticket_type: hostingForm.ticket_type || 'Regular',
+          price: parseFloat(hostingForm.price) || 0,
+          quantity_available: parseInt(hostingForm.quantity_available) || 100,
+        }
+      ]
     };
 
     try {
-      await api.post('/events/', payload);
+      if (editingEventId) {
+        await api.put(`/events/${editingEventId}/`, payload);
+      } else {
+        await api.post('/events/', payload);
+      }
+      
       setIsHostingOpen(false);
-      setHostingForm({
-        title: '',
-        description: '',
-        category: '',
-        start_date: '',
-        end_date: '',
-        venue_name: '',
-        venue_location: '',
-      });
+      setEditingEventId(null);
       fetchEvents();
     } catch (err) {
-      console.error('Failed to create event:', err.response?.data || err);
+      console.error('Failed to save event:', err.response?.data || err);
       const serverMsg = err.response?.data ? JSON.stringify(err.response.data) : 'Please check your inputs and try again.';
-      setHostingError(`Failed to host event: ${serverMsg}`);
+      setHostingError(`Failed to save event: ${serverMsg}`);
     } finally {
       setHostingLoading(false);
     }
   };
+
+  // Helper check if the active user is the creator of the selected event
+  const isCreatorOfSelected = selectedEvent && (
+    selectedEvent.organizer_username === currentUsername ||
+    selectedEvent.organizer === currentUserId ||
+    selectedEvent.organizer_id === currentUserId
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-white relative">
@@ -133,7 +203,7 @@ export default function Events() {
 
         {isOrganizer && (
           <button
-            onClick={() => setIsHostingOpen(true)}
+            onClick={handleOpenCreateModal}
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all shrink-0"
           >
             <PlusCircle className="w-5 h-5" />
@@ -160,10 +230,11 @@ export default function Events() {
         </div>
       )}
 
+      {/* Host / Edit Event Modal */}
       {isHostingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={() => setIsHostingOpen(false)} />
-          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 overflow-y-auto py-10">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={() => setIsHostingOpen(false)} />
+          <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 my-auto max-h-[90vh] overflow-y-auto">
             <button onClick={() => setIsHostingOpen(false)} className="absolute top-4 right-4 bg-emerald-900/85 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -172,7 +243,8 @@ export default function Events() {
                 Organizer Portal
               </span>
               <h2 className="text-2xl font-extrabold text-white mt-3 flex items-center gap-2">
-                <PlusCircle className="w-6 h-6 text-orange-500" /> Host a New Event
+                <PlusCircle className="w-6 h-6 text-orange-500" /> 
+                {editingEventId ? 'Edit Event Details' : 'Host a New Event'}
               </h2>
             </div>
 
@@ -242,6 +314,44 @@ export default function Events() {
                 </div>
               </div>
 
+              <div className="p-4 bg-emerald-900/30 border border-emerald-800 rounded-2xl space-y-3">
+                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider block">Ticket Pricing</span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Tier Name</label>
+                    <input
+                      type="text"
+                      value={hostingForm.ticket_type}
+                      onChange={(e) => setHostingForm({ ...hostingForm, ticket_type: e.target.value })}
+                      placeholder="Regular / VIP"
+                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Price (KES)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={hostingForm.price}
+                      onChange={(e) => setHostingForm({ ...hostingForm, price: e.target.value })}
+                      placeholder="0 for Free"
+                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-emerald-300 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={hostingForm.quantity_available}
+                      onChange={(e) => setHostingForm({ ...hostingForm, quantity_available: e.target.value })}
+                      placeholder="100"
+                      className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-emerald-300 mb-1">Description</label>
                 <textarea
@@ -259,13 +369,14 @@ export default function Events() {
                 disabled={hostingLoading}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 transition-all mt-4"
               >
-                {hostingLoading ? 'Publishing Event...' : 'Publish Event'}
+                {hostingLoading ? 'Saving Event...' : editingEventId ? 'Update Event' : 'Publish Event'}
               </button>
             </form>
           </div>
         </div>
       )}
 
+      {/* Event Details & Ticket Purchasing / Owner Controls Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
@@ -273,13 +384,40 @@ export default function Events() {
             <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
               <X className="w-5 h-5" />
             </button>
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
-                Event Overview
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">{selectedEvent.title}</h2>
+            
+            <div className="flex justify-between items-start gap-4 pr-8">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
+                  Event Overview
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">{selectedEvent.title}</h2>
+              </div>
+
+              {/* Owner Action Buttons */}
+              {isCreatorOfSelected && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleOpenEditModal(selectedEvent)}
+                    className="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 p-2 rounded-xl border border-emerald-600/50 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                    title="Edit Event"
+                  >
+                    <Edit className="w-4 h-4 text-orange-400" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEvent(selectedEvent.id)}
+                    className="bg-red-950/60 hover:bg-red-900 text-red-300 p-2 rounded-xl border border-red-800/80 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                    title="Delete Event"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
             </div>
+
             <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">{selectedEvent.description}</p>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-y border-emerald-900">
               <div className="flex items-center gap-3 text-emerald-200 text-sm">
                 <Calendar className="w-5 h-5 text-orange-400 flex-shrink-0" />
@@ -290,6 +428,7 @@ export default function Events() {
                 <span>{selectedEvent.venue_location || selectedEvent.location || 'Nairobi, Kenya'}</span>
               </div>
             </div>
+
             <div>
               <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Available Ticket</h3>
               <div className="space-y-3">
