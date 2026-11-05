@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Store, ShieldCheck, User, LogOut, Ticket, LayoutDashboard } from 'lucide-react';
+import { Home, Calendar, Store, ShieldCheck, User, LogOut, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export default function Navbar() {
       isActive(path)
         ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
         : 'text-emerald-200 hover:bg-emerald-900/80 hover:text-white'
-    };`;
+    }`;
 
   return (
     <nav className="bg-emerald-950/90 border-b border-emerald-800/80 sticky top-0 z-50 backdrop-blur-md">
@@ -35,6 +35,9 @@ export default function Navbar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-2">
+              <Link to="/" className={linkClass('/')}>
+                <Home className="w-4 h-4" /> Home
+              </Link>
               <Link to="/events" className={linkClass('/events')}>
                 <Calendar className="w-4 h-4" /> Events
               </Link>
@@ -42,7 +45,6 @@ export default function Navbar() {
                 <Store className="w-4 h-4" /> Marketplace
               </Link>
 
-              {/* Conditional Role-Based Links */}
               {role === 'VENDOR' && (
                 <Link to="/vendor/dashboard" className={linkClass('/vendor/dashboard')}>
                   <LayoutDashboard className="w-4 h-4" /> Vendor Dashboard
