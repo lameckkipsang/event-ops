@@ -55,7 +55,8 @@ export default function Events() {
   const currentUserId = localStorage.getItem('user_id') || jwtData?.user_id || jwtData?.sub || '';
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
 
-  const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF' || !role);
+  // Removed the loose fallback so vendors cannot see the host button
+  const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF');
 
   const fetchEvents = () => {
     api.get('/events/')
@@ -164,17 +165,23 @@ export default function Events() {
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
 
-    navigate('/payment', {
-      state: {
-        item: {
-          id: selectedTier.id,
-          title: `${selectedEvent.title} - ${selectedTier.ticket_type}`,
-          price: selectedTier.price,
-          description: selectedTier.description || selectedEvent.description || 'Event Ticket Booking',
-        },
-        type: 'event_ticket',
+    const checkoutState = {
+      item: {
+        id: selectedTier.id,
+        title: `${selectedEvent.title} - ${selectedTier.ticket_type}`,
+        price: selectedTier.price,
+        description: selectedTier.description || selectedEvent.description || 'Event Ticket Booking',
       },
-    });
+      type: 'event_ticket',
+    };
+
+    // Require login before checkout and save state
+    if (!token) {
+      navigate('/login', { state: { returnTo: '/payment', ...checkoutState } });
+      return;
+    }
+
+    navigate('/payment', { state: checkoutState });
   };
 
   const handleHostSubmit = async (e) => {
