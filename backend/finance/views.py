@@ -88,18 +88,26 @@ class InitiateVendorBookingSTKPushView(APIView):
             return Response({"error": "package_id and phone_number are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not event_id:
-            user_event = Event.objects.filter(organizer=request.user).first()
-            if user_event:
-                event_id = user_event.id
-            else:
-                return Response({"error": "event_id is required. Please create an event before booking vendor services."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "event_id is strictly required. You must specify which event this vendor is for."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Confirm ownership of the target event
+        try:
+            target_event = Event.objects.get(id=event_id, organizer=request.user)
+        except Event.DoesNotExist:
+             return Response(
+                {"error": "Security Exception: You can only book vendors for your own events."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         try:
             package = VendorPackage.objects.get(id=package_id)
             booking_request, created = BookingRequest.objects.get_or_create(
                 organizer=request.user,
                 package=package,
-                event_id=event_id,
+                event_id=target_event.id,
                 defaults={'status': 'PENDING'}
             )
             payment_amount = int(float(package.price))
@@ -166,7 +174,7 @@ class MpesaCallbackView(APIView):
                         user=transaction_record.ticket.event.organizer,
                         title="New Ticket Sold! 🎉",
                         message=f"You just sold a {transaction_record.ticket.tier.ticket_type} ticket for {transaction_record.ticket.event.title}.",
-                        link="/organizer/bookings"
+                        link="/organizer/dashboard"
                     )
                 elif transaction_record.booking:
                     Notification.objects.create(
@@ -179,7 +187,7 @@ class MpesaCallbackView(APIView):
                         user=transaction_record.organizer,
                         title="Payment Successful",
                         message=f"Your escrow payment for {transaction_record.booking.package.title} is now secured.",
-                        link="/organizer/bookings"
+                        link="/organizer/dashboard"
                     )
 
             else:
@@ -192,7 +200,7 @@ class MpesaCallbackView(APIView):
                         user=transaction_record.ticket.event.organizer,
                         title="Failed Payment Alert ⚠️",
                         message=f"A ticket purchase failed for {transaction_record.ticket.event.title}. Check your dashboard to follow up.",
-                        link="/organizer/bookings"
+                        link="/organizer/dashboard"
                     )
 
         except Transaction.DoesNotExist:
