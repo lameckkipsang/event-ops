@@ -22,6 +22,13 @@ class TicketPurchaseView(APIView):
         except TicketTier.DoesNotExist:
             return Response({"error": "Invalid or non-existent ticket tier."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Prevent organizers from buying their own tickets
+        if tier.event.organizer == request.user:
+            return Response(
+                {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         if tier.quantity_available <= 0:
             return Response({"error": "Tickets for this tier are sold out."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -112,6 +119,13 @@ class CheckoutInitiateView(APIView):
             tier = TicketTier.objects.get(id=ticket_tier_id)
         except TicketTier.DoesNotExist:
             return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Prevent organizers from initiating M-Pesa STK push for their own event tickets
+        if tier.event.organizer == request.user:
+            return Response(
+                {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         total_amount = int(tier.price * quantity)
 
