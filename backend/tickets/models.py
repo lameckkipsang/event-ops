@@ -2,12 +2,19 @@ from django.db import models
 import uuid
 from django.conf import settings
 
-# Create your models here.
 class TicketTier(models.Model):
+    TIER_CHOICES = [
+        ('Basic', 'Basic'),
+        ('Regular', 'Regular'),
+        ('VIP', 'VIP'),
+        ('VVIP', 'VVIP'),
+    ]
+    
     event = models.ForeignKey('events.Event', on_delete=models.CASCADE, related_name='ticket_tiers')
-    ticket_type = models.CharField(max_length=50)
+    ticket_type = models.CharField(max_length=50, choices=TIER_CHOICES, default='Regular')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity_available = models.PositiveIntegerField()
+    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.event.title} - {self.ticket_type} (${self.price})"
