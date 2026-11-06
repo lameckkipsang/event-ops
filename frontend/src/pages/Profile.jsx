@@ -56,7 +56,6 @@ export default function Profile() {
         .then((res) => setTransactions(res.data))
         .catch((err) => console.error('Failed to fetch transactions:', err));
     }
-    // Fetch notifications when the tab is active
     if (activeTab === 'notifications') {
       api.get('/accounts/notifications/history/')
         .then((res) => setNotifications(res.data))
@@ -105,6 +104,16 @@ export default function Profile() {
     }
   };
 
+  // Triggers the backend bulk update from the profile page
+  const handleMarkAllAsRead = async () => {
+    try {
+        await api.patch('accounts/notifications/history/');
+        setNotifications(prev => prev.map(n => ({...n, is_read: true})));
+    } catch(err) {
+        console.error("Failed marking all as read", err);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -135,7 +144,6 @@ export default function Profile() {
           My Profile
         </button>
         
-        {/* Hide tickets/receipts tab from Vendors and Security agencies */}
         {user?.role !== 'VENDOR' && user?.role !== 'SECURITY' && (
           <button
             onClick={() => setActiveTab('tickets_receipts')}
@@ -150,7 +158,6 @@ export default function Profile() {
           </button>
         )}
 
-        {/* Notifications History Tab */}
         <button
             onClick={() => setActiveTab('notifications')}
             className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all ${
@@ -178,7 +185,6 @@ export default function Profile() {
 
       {activeTab === 'profile' ? (
         <>
-          {/* Profile Details Header */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-8 border-b border-emerald-800/80">
             <div className="flex items-center gap-6 text-center sm:text-left">
               <div className="relative group">
@@ -352,12 +358,22 @@ export default function Profile() {
           )}
         </>
       ) : activeTab === 'notifications' ? (
-        // Notifications Tab Content
         <div className="space-y-6 pt-2">
-            <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2 no-print">
-                <Bell className="w-6 h-6 text-orange-500" /> 
-                Notifications History
-            </h2>
+            <div className="flex items-center justify-between no-print">
+                <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2">
+                    <Bell className="w-6 h-6 text-orange-500" /> 
+                    Notifications History
+                </h2>
+                {/* Mark all as read button for the Profile page */}
+                {notifications.some(n => !n.is_read) && (
+                    <button 
+                        onClick={handleMarkAllAsRead} 
+                        className="text-xs font-semibold bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                        Mark all as read
+                    </button>
+                )}
+            </div>
             {notifications.length === 0 ? (
                 <div className="p-8 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm">
                     No notifications found.
