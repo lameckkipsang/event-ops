@@ -79,6 +79,8 @@ export default function VendorDashboard() {
           {bookings.map((booking) => {
             const isPending = booking.status === 'PENDING';
             const isAccepted = booking.status === 'ACCEPTED';
+            // Correctly extract package price if it's nested in the package object or mapped differently
+            const packagePrice = booking.package?.price || booking.package_price || 'N/A';
 
             return (
               <div
@@ -103,7 +105,7 @@ export default function VendorDashboard() {
                     </span>
                     <span className="text-xs font-bold bg-emerald-900/50 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-700 flex items-center gap-1">
                        <DollarSign className="w-3.5 h-3.5" />
-                       KES {booking.package_price || 'N/A'}
+                       KES {packagePrice}
                     </span>
                   </div>
 
