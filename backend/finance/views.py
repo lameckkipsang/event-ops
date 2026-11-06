@@ -172,7 +172,7 @@ class MpesaCallbackView(APIView):
                 if transaction_record.ticket:
                     Notification.objects.create(
                         user=transaction_record.ticket.event.organizer,
-                        title="New Ticket Sold! 🎉",
+                        title="New Ticket Sold!",
                         message=f"You just sold a {transaction_record.ticket.tier.ticket_type} ticket for {transaction_record.ticket.event.title}.",
                         link="/organizer/dashboard"
                     )
