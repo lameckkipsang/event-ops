@@ -77,11 +77,17 @@ class NotificationHistoryView(APIView):
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
 
-    def patch(self, request, pk):
-        try:
-            notification = Notification.objects.get(pk=pk, user=request.user)
-            notification.is_read = True
-            notification.save()
-            return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
-        except Notification.DoesNotExist:
-            return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
+    def patch(self, request, pk=None):
+        # If a specific ID is passed, mark just that one.
+        if pk:
+            try:
+                notification = Notification.objects.get(pk=pk, user=request.user)
+                notification.is_read = True
+                notification.save()
+                return Response({"status": "marked as read"}, status=status.HTTP_200_OK)
+            except Notification.DoesNotExist:
+                return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
+        # If no ID is passed, bulk-update ALL unread notifications for this user efficiently.
+        else:
+            Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+            return Response({"status": "all marked as read"}, status=status.HTTP_200_OK)
