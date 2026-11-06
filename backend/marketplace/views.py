@@ -58,7 +58,7 @@ class VendorPackageViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         package = self.get_object()
         
-        # Soft delete: hide from marketplace but preserve for organizers who booked it
+        # hide from marketplace but preserve for organizers who booked it
         package.is_available = False
         package.title = f"{package.title} [DISCONTINUED]"
         package.save()
@@ -82,8 +82,13 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return BookingRequest.objects.all()
         if getattr(user, 'role', None) == 'VENDOR':
-            return BookingRequest.objects.filter(package__vendor=user)
+            # Vendors only see bookings where the escrow transaction is COMPLETED
+            return BookingRequest.objects.filter(
+                package__vendor=user,
+                transaction__status='COMPLETED'
+            )
         elif getattr(user, 'role', None) == 'ORGANIZER':
+            # Organizers can see all attempts, including failed ones (abandoned checkouts)
             return BookingRequest.objects.filter(organizer=user)
         return BookingRequest.objects.none()
         
