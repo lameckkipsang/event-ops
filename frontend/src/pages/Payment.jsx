@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt } from 'lucide-react';
+import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt, Calendar } from 'lucide-react';
 import api from '../services/api';
 
 export default function Payment() {
@@ -13,6 +13,31 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // State to hold the organizer's events and the one they select
+  const [myEvents, setMyEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(eventId || '');
+
+  const userRole = localStorage.getItem('user_role') || '';
+  const resolvedType = type || (item?.ticket_type || item?.tier_id ? 'event_ticket' : 'vendor_booking');
+  const isVendorBooking = resolvedType === 'vendor_booking';
+  const isUnauthorizedAttendee = isVendorBooking && userRole !== 'ORGANIZER';
+
+  // Fetch the organizer's events when they land on the checkout page for a vendor
+  useEffect(() => {
+    if (isVendorBooking && userRole === 'ORGANIZER') {
+      api.get('events/')
+        .then(res => {
+          const fetchedEvents = res.data.results || res.data || [];
+          setMyEvents(fetchedEvents);
+          // Auto-select if they only have exactly one event
+          if (fetchedEvents.length === 1 && !selectedEventId) {
+            setSelectedEventId(fetchedEvents[0].id);
+          }
+        })
+        .catch(err => console.error('Failed to fetch events for dropdown:', err));
+    }
+  }, [isVendorBooking, userRole, selectedEventId]);
 
   if (!item) {
     return (
@@ -30,11 +55,6 @@ export default function Payment() {
       </div>
     );
   }
-
-  const userRole = localStorage.getItem('user_role') || '';
-  const resolvedType = type || (item.ticket_type || item.tier_id ? 'event_ticket' : 'vendor_booking');
-  const isVendorBooking = resolvedType === 'vendor_booking';
-  const isUnauthorizedAttendee = isVendorBooking && userRole !== 'ORGANIZER';
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -59,10 +79,11 @@ export default function Payment() {
       payload.ticket_tier_id = item.id;
     } else {
       payload.package_id = item.id;
-      payload.event_id = eventId || item.event || item.event_id || (typeof item.event === 'object' ? item.event?.id : null);
+      // Take selected event from the dropdown
+      payload.event_id = selectedEventId || item.event || item.event_id || (typeof item.event === 'object' ? item.event?.id : null);
       
       if (!payload.event_id) {
-        setError('event_id is required. Please create an event before booking vendor services.');
+        setError('Please select an event for this vendor booking.');
         setLoading(false);
         return;
       }
@@ -138,6 +159,37 @@ export default function Payment() {
         </div>
       ) : (
         <form onSubmit={handlePayment} className="space-y-5">
+          
+          {/* Event Selector Dropdown for Organizers */}
+          {isVendorBooking && (
+            <div>
+              <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
+                Target Event
+              </label>
+              <div className="relative">
+                <Calendar className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                <select
+                  required
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
+                >
+                  <option value="" disabled>-- Select the event for this service --</option>
+                  {myEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {myEvents.length === 0 && (
+                <p className="text-[11px] text-red-400 mt-1">
+                  You must create an event first before booking a vendor.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
               M-Pesa Phone Number
@@ -167,8 +219,8 @@ export default function Payment() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
+            disabled={loading || (isVendorBooking && !selectedEventId)}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
           >
             {loading ? 'Initiating M-Pesa...' : `Pay KES ${item.price || item.cost}`}
             <ArrowRight className="w-4 h-4" />
