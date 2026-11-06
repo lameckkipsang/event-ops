@@ -48,8 +48,8 @@ export default function Navbar() {
           // instantly clear the dot visually
           setNotifications(prev => prev.map(n => n.id === id ? {...n, is_read: true} : n));
           
-          // Send the update to the backend
-          await api.patch(`accounts/notifications/${id}/`);
+          // Send the update to the backend with correct history path
+          await api.patch(`accounts/notifications/history/${id}/`);
           
           // Force a hard sync so the 30s interval doesn't fetch stale data
           await fetchNotifications(); 
