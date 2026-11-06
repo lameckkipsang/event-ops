@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2 } from 'lucide-react';
+import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2, Mail } from 'lucide-react';
 import { marketplaceService } from '../services/marketplaceApi';
 import api from '../services/api';
 
@@ -245,8 +245,13 @@ export default function VendorMarketplace() {
                   <h3 className="text-xl font-bold text-white mb-2">{pkg.title}</h3>
                   <p className="text-emerald-200/80 text-sm line-clamp-3 mb-4">{pkg.description}</p>
                   
-                  <div className="text-xs text-emerald-300/70 mb-4">
-                    Offered by: <span className="font-semibold text-white">@{pkg.vendor_username}</span>
+                  <div className="text-xs text-emerald-300/70 mb-4 space-y-1">
+                    <p>Offered by: <span className="font-semibold text-white">@{pkg.vendor_username}</span></p>
+                    {/* Add the vendor's email here so users can contact them */}
+                    <p className="flex items-center gap-1 text-emerald-400">
+                        <Mail className="w-3.5 h-3.5" /> 
+                        {pkg.vendor_email || 'No email provided'}
+                    </p>
                   </div>
                 </div>
 
