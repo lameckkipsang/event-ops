@@ -1,12 +1,23 @@
 from rest_framework import serializers
-from .models import Event
+from .models import Event, EventImage
 from tickets.serializers import TicketTierSerializer
 from tickets.models import TicketTier, Ticket
 from users.models import Notification
 
+class EventImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EventImage
+        fields = ('id', 'image_url', 'uploaded_at')
+
+    def get_image_url(self, obj):
+        return obj.image.url if obj.image else None
+
 class EventSerializer(serializers.ModelSerializer):
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
     ticket_tiers = TicketTierSerializer(many=True, required=False)
+    images = EventImageSerializer(many=True, read_only=True)
     
     class Meta:
         model = Event
@@ -22,9 +33,10 @@ class EventSerializer(serializers.ModelSerializer):
             'venue_location', 
             'max_capacity', 
             'ticket_tiers',
+            'images',
             'created_at'
         )
-        read_only_fields = ('id', 'organizer', 'created_at')
+        read_only_fields = ('id', 'organizer', 'images', 'created_at')
 
     def create(self, validated_data):
         # Automatically assign the currently logged-in user as the event organizer
