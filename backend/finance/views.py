@@ -202,6 +202,17 @@ class MpesaCallbackView(APIView):
                         message=f"A ticket purchase failed for {transaction_record.ticket.event.title}. Check your dashboard to follow up.",
                         link="/organizer/dashboard"
                     )
+                elif transaction_record.booking:
+                    # Prevent Ghost Booking by Canceling the booking request on failed payment
+                    transaction_record.booking.status = 'DECLINED'
+                    transaction_record.booking.save()
+
+                    Notification.objects.create(
+                        user=transaction_record.organizer,
+                        title="Vendor Payment Failed ⚠️",
+                        message=f"Your escrow payment for {transaction_record.booking.package.title} failed. The vendor was NOT notified. Please try booking again.",
+                        link="/organizer/dashboard"
+                    )
 
         except Transaction.DoesNotExist:
             return Response({"error": "Transaction record not found."}, status=status.HTTP_404_NOT_FOUND)
