@@ -211,7 +211,7 @@ class MpesaCallbackView(APIView):
                         user=transaction_record.organizer,
                         title="Vendor Payment Failed",
                         message=f"Your escrow payment for {transaction_record.booking.package.title} failed. The vendor was NOT notified. Please try booking again.",
-                        link="/organizer/dashboard"
+                        link="/organizer/bookings"
                     )
 
         except Transaction.DoesNotExist:
