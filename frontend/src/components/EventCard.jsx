@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Ticket, Edit, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 
 export default function EventCard({ event, onCheckTiers, onEdit, onDelete, currentUserId, currentUsername }) {
   const startingPrice = event.ticket_tiers && event.ticket_tiers.length > 0
@@ -17,45 +17,98 @@ export default function EventCard({ event, onCheckTiers, onEdit, onDelete, curre
     (event.organizer_id && String(event.organizer_id) === String(currentUserId))
   );
 
-  return (
-    <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm group flex flex-col justify-between">
-      <div>
-        {/* Always render header if category exists OR if the user is the owner */}
-        {(event.category || isOwner) && (
-          <div className="bg-emerald-950 p-4 relative border-b border-emerald-800/50 flex justify-between items-center">
-            {event.category ? (
-              <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/30">
-                {event.category}
-              </span>
-            ) : <span />}
+  // Check if the backend delivered images for this event
+  const hasImages = event.images && event.images.length > 0;
+  const coverImage = hasImages ? event.images[0].image_url : null;
 
-            {isOwner && (
-              <div className="flex items-center gap-2 z-15 ml-auto">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onEdit && onEdit(event); }}
-                  className="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-orange-400 rounded-lg transition-colors border border-emerald-600/50 flex items-center gap-1.5 text-xs font-bold shadow"
-                  title="Edit Event"
-                >
-                  <Edit className="w-3.5 h-3.5" />
-                  <span>Edit</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onDelete && onDelete(event.id); }}
-                  className="px-2.5 py-1.5 bg-red-950 hover:bg-red-900 text-red-300 rounded-lg transition-colors border border-red-800/80 flex items-center gap-1.5 text-xs font-bold shadow"
-                  title="Delete Event"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete</span>
-                </button>
+  return (
+    <div className="bg-emerald-900/60 border border-emerald-800/80 rounded-2xl shadow-lg overflow-hidden backdrop-blur-sm group flex flex-col justify-between transition-transform hover:-translate-y-1">
+      <div>
+        
+        {/* Cover Image Section */}
+        {hasImages ? (
+          <div className="w-full h-48 relative overflow-hidden bg-emerald-950">
+            <img 
+              src={coverImage} 
+              alt={event.title} 
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            {/* Dark gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent"></div>
+            
+            {/* Header controls layered on top of the image */}
+            <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-center z-10">
+              {event.category ? (
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-black/60 px-3 py-1 rounded-full border border-orange-500/50 backdrop-blur-md">
+                  {event.category}
+                </span>
+              ) : <span />}
+
+              {isOwner && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onEdit && onEdit(event); }}
+                    className="p-1.5 bg-black/60 hover:bg-black/80 text-orange-400 rounded-lg transition-colors border border-emerald-600/50 backdrop-blur-md shadow"
+                    title="Edit Event"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDelete && onDelete(event.id); }}
+                    className="p-1.5 bg-red-950/80 hover:bg-red-900 text-red-300 rounded-lg transition-colors border border-red-800/80 backdrop-blur-md shadow"
+                    title="Delete Event"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {event.images.length > 1 && (
+              <div className="absolute bottom-3 right-3 bg-black/70 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-md flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" />
+                +{event.images.length - 1} Banners
               </div>
             )}
           </div>
+        ) : (
+          // Fallback Header for events without images
+          (event.category || isOwner) && (
+            <div className="bg-emerald-950 p-4 relative border-b border-emerald-800/50 flex justify-between items-center">
+              {event.category ? (
+                <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/30">
+                  {event.category}
+                </span>
+              ) : <span />}
+
+              {isOwner && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onEdit && onEdit(event); }}
+                    className="px-2.5 py-1.5 bg-emerald-800 hover:bg-emerald-700 text-orange-400 rounded-lg transition-colors border border-emerald-600/50 flex items-center gap-1.5 text-xs font-bold shadow"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDelete && onDelete(event.id); }}
+                    className="px-2.5 py-1.5 bg-red-950 hover:bg-red-900 text-red-300 rounded-lg transition-colors border border-red-800/80 flex items-center gap-1.5 text-xs font-bold shadow"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )
         )}
 
         <div className="p-5 space-y-3">
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-xl font-bold text-white line-clamp-1">
             {event.title}
           </h3>
           {event.description && (
@@ -74,7 +127,7 @@ export default function EventCard({ event, onCheckTiers, onEdit, onDelete, curre
             {eventLocation && (
               <div className="flex items-center">
                 <MapPin className="w-4 h-4 mr-2 text-orange-400 shrink-0" />
-                <span>{eventLocation}</span>
+                <span className="line-clamp-1">{eventLocation}</span>
               </div>
             )}
           </div>
@@ -97,7 +150,7 @@ export default function EventCard({ event, onCheckTiers, onEdit, onDelete, curre
           className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-orange-500/20 transition-all flex items-center space-x-1.5"
         >
           <Ticket className="w-4 h-4" />
-          <span>Check Ticket Tiers</span>
+          <span>Check Tiers</span>
         </button>
       </div>
     </div>
