@@ -104,11 +104,18 @@ export default function Profile() {
     }
   };
 
-  // Triggers the backend bulk update from the profile page
+  // Concurrently update all unread notifications to bypass DRF bulk-list limitations
   const handleMarkAllAsRead = async () => {
     try {
-        await api.patch('accounts/notifications/history/');
+        const unreadNotifications = notifications.filter(n => !n.is_read);
+        
         setNotifications(prev => prev.map(n => ({...n, is_read: true})));
+        
+        await Promise.all(
+            unreadNotifications.map(n => 
+                api.patch(`accounts/notifications/${n.id}/`, { is_read: true })
+            )
+        );
     } catch(err) {
         console.error("Failed marking all as read", err);
     }
