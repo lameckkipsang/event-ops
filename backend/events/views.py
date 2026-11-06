@@ -61,18 +61,25 @@ class EventViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        
+        # Save the updated standard fields and handle ticket tiers via serializer
+        event = serializer.save()
 
         # Handle new images if the user uploads more during an edit
         images_data = request.FILES.getlist('images')
         if images_data:
             for image_file in images_data:
-                EventImage.objects.create(event=instance, image=image_file)
+                EventImage.objects.create(event=event, image=image_file)
 
         if getattr(instance, '_prefetched_objects_cache', None):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+        
+    def partial_update(self, request, *args, **kwargs):
+        # Forward PATCH requests to the update handler with partial=True
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
 class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all().order_by('-created_at')
