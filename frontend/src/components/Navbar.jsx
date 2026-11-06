@@ -45,8 +45,14 @@ export default function Navbar() {
 
   const handleMarkAsRead = async (id) => {
       try {
-          await api.patch(`accounts/notifications/${id}/`);
+          // instantly clear the dot visually
           setNotifications(prev => prev.map(n => n.id === id ? {...n, is_read: true} : n));
+          
+          // Send the update to the backend
+          await api.patch(`accounts/notifications/${id}/`);
+          
+          // Force a hard sync so the 30s interval doesn't fetch stale data
+          await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking read", err);
       }
@@ -55,8 +61,14 @@ export default function Navbar() {
   // Triggers the bulk update
   const handleMarkAllAsRead = async () => {
       try {
-          await api.patch('accounts/notifications/history/');
+          // instantly clear the dot visually
           setNotifications(prev => prev.map(n => ({...n, is_read: true})));
+          
+          // Send the bulk update to the backend
+          await api.patch('accounts/notifications/history/');
+          
+          // Force a hard sync so the 30s interval doesn't fetch stale data
+          await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking all as read", err);
       }
