@@ -48,26 +48,30 @@ export default function Navbar() {
           // instantly clear the dot visually
           setNotifications(prev => prev.map(n => n.id === id ? {...n, is_read: true} : n));
           
-          // Send the update to the backend with correct history path
-          await api.patch(`accounts/notifications/history/${id}/`);
+          // Send the payload so the database actually updates
+          await api.patch(`accounts/notifications/${id}/`, { is_read: true });
           
-          // Force a hard sync so the 30s interval doesn't fetch stale data
           await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking read", err);
       }
   };
 
-  // Triggers the bulk update
   const handleMarkAllAsRead = async () => {
       try {
+          const unreadNotifications = notifications.filter(n => !n.is_read);
+          
           // instantly clear the dot visually
           setNotifications(prev => prev.map(n => ({...n, is_read: true})));
           
-          // Send the bulk update to the backend
-          await api.patch('accounts/notifications/history/');
+          // Safely map through unread notifications and update them concurrently 
+          // because DRF doesn't support bulk PATCH on list endpoints by default
+          await Promise.all(
+              unreadNotifications.map(n => 
+                  api.patch(`accounts/notifications/${n.id}/`, { is_read: true })
+              )
+          );
           
-          // Force a hard sync so the 30s interval doesn't fetch stale data
           await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking all as read", err);
