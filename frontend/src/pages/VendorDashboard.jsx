@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Store, CheckCircle, XCircle, Clock, Calendar, AlertCircle, Loader2, Bell } from 'lucide-react';
+import { Store, CheckCircle, XCircle, Clock, Calendar, AlertCircle, Loader2, Bell, DollarSign } from 'lucide-react';
 import api from '../services/api';
 
 export default function VendorDashboard() {
@@ -58,7 +58,7 @@ export default function VendorDashboard() {
             Incoming Booking Requests
           </h1>
           <p className="text-emerald-200/70 text-sm mt-1">
-            Review event booking inquiries for your services and choose to accept or decline.
+            Review event booking inquiries for your services, contact organizers, and track revenue.
           </p>
         </div>
       </div>
@@ -79,7 +79,6 @@ export default function VendorDashboard() {
           {bookings.map((booking) => {
             const isPending = booking.status === 'PENDING';
             const isAccepted = booking.status === 'ACCEPTED';
-            const isDeclined = booking.status === 'DECLINED';
 
             return (
               <div
@@ -102,6 +101,10 @@ export default function VendorDashboard() {
                     >
                       Status: {booking.status}
                     </span>
+                    <span className="text-xs font-bold bg-emerald-900/50 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-700 flex items-center gap-1">
+                       <DollarSign className="w-3.5 h-3.5" />
+                       KES {booking.package_price || 'N/A'}
+                    </span>
                   </div>
 
                   <h3 className="text-lg font-bold text-white">
@@ -110,8 +113,10 @@ export default function VendorDashboard() {
 
                   <div className="text-xs text-emerald-300/80 space-y-1">
                     <p>
-                      Organizer Contact: <span className="font-semibold text-white">@{booking.organizer_username}</span>
+                      Organizer: <span className="font-semibold text-white">@{booking.organizer_username}</span>
                     </p>
+                    <p>Contact Email: <span className="font-semibold text-white">{booking.organizer_email || 'No email provided'}</span></p>
+                    <p>Contact Phone: <span className="font-semibold text-white">{booking.organizer_phone || 'No phone provided'}</span></p>
                     <div className="flex items-center gap-1.5 text-emerald-400/90 pt-1">
                       <Calendar className="w-3.5 h-3.5 text-orange-400" />
                       <span>Received: {new Date(booking.created_at).toLocaleString()}</span>
