@@ -42,6 +42,7 @@ class VendorPackageSerializer(serializers.ModelSerializer):
 
 class BookingRequestSerializer(serializers.ModelSerializer):
     package_title = serializers.ReadOnlyField(source='package.title')
+    package_price = serializers.ReadOnlyField(source='package.price')
     event_title = serializers.ReadOnlyField(source='event.title')
     organizer_username = serializers.ReadOnlyField(source='organizer.username')
     organizer_email = serializers.ReadOnlyField(source='organizer.email')
@@ -54,7 +55,8 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             'event', 
             'event_title', 
             'package', 
-            'package_title', 
+            'package_title',
+            'package_price',
             'organizer', 
             'organizer_username', 
             'organizer_email',
