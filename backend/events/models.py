@@ -11,7 +11,6 @@ class Event(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField()
-    banner = CloudinaryField('image', blank=True, null=True)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     venue_name = models.CharField(max_length=150)
@@ -21,3 +20,16 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
+# One-to-Many model to handle multiple Cloudinary images per event
+class EventImage(models.Model):
+    event = models.ForeignKey(
+        Event, 
+        on_delete=models.CASCADE, 
+        related_name='images'
+    )
+    image = CloudinaryField('image')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.event.title}"
