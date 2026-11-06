@@ -179,7 +179,7 @@ class MpesaCallbackView(APIView):
                 elif transaction_record.booking:
                     Notification.objects.create(
                         user=transaction_record.booking.package.vendor,
-                        title="Escrow Funded! 💰",
+                        title="Escrow Funded!",
                         message=f"Payment secured! Organizer @{transaction_record.organizer.username} funded escrow for {transaction_record.booking.package.title}.",
                         link="/vendor/dashboard"
                     )
