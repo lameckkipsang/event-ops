@@ -52,6 +52,16 @@ export default function Navbar() {
       }
   };
 
+  // Triggers the bulk update
+  const handleMarkAllAsRead = async () => {
+      try {
+          await api.patch('accounts/notifications/history/');
+          setNotifications(prev => prev.map(n => ({...n, is_read: true})));
+      } catch(err) {
+          console.error("Failed marking all as read", err);
+      }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     addToast({ title: 'Signed Out Successfully', message: 'You have been logged out securely.', type: 'success' });
@@ -131,14 +141,22 @@ export default function Navbar() {
                     <div className="absolute right-0 mt-2 w-80 bg-emerald-950 border border-emerald-800 rounded-xl shadow-2xl overflow-hidden z-50">
                       <div className="p-3 border-b border-emerald-800 bg-emerald-900/50 flex justify-between items-center">
                         <span className="text-xs font-bold text-emerald-300">Notifications</span>
-                        <Link to="/profile" state={{ activeTab: 'notifications' }} onClick={() => setShowDropdown(false)} className="text-xs text-orange-400 hover:underline">View All</Link>
+                        <div className="flex gap-3 items-center">
+                           {/* Mark all as read button */}
+                           {unreadCount > 0 && (
+                             <button onClick={handleMarkAllAsRead} className="text-[10px] font-semibold text-emerald-400 hover:text-white transition-colors">
+                               Mark all read
+                             </button>
+                           )}
+                           <Link to="/profile" state={{ activeTab: 'notifications' }} onClick={() => setShowDropdown(false)} className="text-[10px] text-orange-400 hover:underline">View All</Link>
+                        </div>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
                         {notifications.length === 0 ? (
                            <div className="p-4 text-center text-xs text-emerald-400/70">No new notifications</div>
                         ) : (
                           notifications.slice(0, 5).map(n => (
-                            <div key={n.id} className={`p-3 border-b border-emerald-800/50 hover:bg-emerald-900/30 ${!n.is_read ? 'bg-emerald-900/20' : ''}`}>
+                            <div key={n.id} className={`p-3 border-b border-emerald-800/50 hover:bg-emerald-900/30 ${!n.is_read ? 'bg-emerald-900/40' : ''}`}>
                               <div className="flex justify-between items-start mb-1">
                                 <p className="text-xs font-bold text-white">{n.title}</p>
                                 {!n.is_read && (
