@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, X, Ticket, MapPin, CheckCircle2, PlusCircle, Edit, Trash2, Plus, Minus } from 'lucide-react';
+import { Calendar, Loader2, X, Ticket, MapPin, PlusCircle, Trash2, Plus, ImageIcon } from 'lucide-react';
 import EventCard from '../components/EventCard';
 import api from '../services/api';
 
@@ -10,11 +10,9 @@ export default function Events() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Selected Event Modal State
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTier, setSelectedTier] = useState(null);
 
-  // Hosting / Editing Modal State
   const [isHostingOpen, setIsHostingOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [hostingForm, setHostingForm] = useState({
@@ -27,11 +25,11 @@ export default function Events() {
     venue_location: '',
   });
   
-  // Multiple Ticket Tiers State
   const [ticketTiers, setTicketTiers] = useState([
     { ticket_type: 'Regular', price: '', quantity_available: '100', description: 'Standard entry access to all general areas.' }
   ]);
-
+  
+  const [imageFiles, setImageFiles] = useState([]);
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState('');
 
@@ -54,8 +52,6 @@ export default function Events() {
   const jwtData = token ? parseJwt(token) : null;
   const currentUserId = localStorage.getItem('user_id') || jwtData?.user_id || jwtData?.sub || '';
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
-
-  // Removed the loose fallback so vendors cannot see the host button
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF');
 
   const fetchEvents = () => {
@@ -100,6 +96,7 @@ export default function Events() {
     setTicketTiers([
       { ticket_type: 'Regular', price: '', quantity_available: '100', description: 'Standard entry access to all general areas.' }
     ]);
+    setImageFiles([]); 
     setHostingError('');
     setIsHostingOpen(true);
   };
@@ -110,8 +107,8 @@ export default function Events() {
       title: event.title || '',
       description: event.description || '',
       category: event.category || '',
-      start_date: event.start_date || event.date || '',
-      end_date: event.end_date || event.date || '',
+      start_date: event.start_date ? event.start_date.split('T')[0] : '',
+      end_date: event.end_date ? event.end_date.split('T')[0] : '',
       venue_name: event.venue_name || '',
       venue_location: event.venue_location || '',
     });
@@ -129,6 +126,7 @@ export default function Events() {
       ]);
     }
 
+    setImageFiles([]);
     setHostingError('');
     setSelectedEvent(null);
     setIsHostingOpen(true);
@@ -149,9 +147,14 @@ export default function Events() {
     setTicketTiers(updated);
   };
 
+  const handleImageChange = (e) => {
+    if (e.target.files) {
+      setImageFiles(Array.from(e.target.files));
+    }
+  };
+
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
-    
     try {
       await api.delete(`/events/${eventId}/`);
       setSelectedEvent(null);
@@ -164,7 +167,6 @@ export default function Events() {
 
   const handlePurchaseTicket = () => {
     if (!selectedTier || !selectedEvent) return;
-
     const checkoutState = {
       item: {
         id: selectedTier.id,
@@ -174,13 +176,10 @@ export default function Events() {
       },
       type: 'event_ticket',
     };
-
-    // Require login before checkout and save state
     if (!token) {
       navigate('/login', { state: { returnTo: '/payment', ...checkoutState } });
       return;
     }
-
     navigate('/payment', { state: checkoutState });
   };
 
@@ -198,6 +197,19 @@ export default function Events() {
       return val;
     };
 
+    const formData = new FormData();
+    formData.append('title', hostingForm.title);
+    formData.append('description', hostingForm.description);
+    if(hostingForm.category) formData.append('category', hostingForm.category);
+    formData.append('start_date', formatDate(hostingForm.start_date));
+    formData.append('end_date', formatDate(hostingForm.end_date || hostingForm.start_date));
+    formData.append('venue_name', hostingForm.venue_name);
+    formData.append('venue_location', hostingForm.venue_location || hostingForm.venue_name);
+
+    imageFiles.forEach(file => {
+      formData.append('images', file);
+    });
+
     const formattedTiers = ticketTiers.map(tier => ({
       ticket_type: tier.ticket_type || 'Regular',
       price: isNaN(parseFloat(tier.price)) ? 0 : parseFloat(tier.price),
@@ -205,22 +217,14 @@ export default function Events() {
       description: tier.description || ''
     }));
 
-    const payload = {
-      title: hostingForm.title,
-      description: hostingForm.description,
-      category: hostingForm.category,
-      start_date: formatDate(hostingForm.start_date),
-      end_date: formatDate(hostingForm.end_date || hostingForm.start_date),
-      venue_name: hostingForm.venue_name,
-      venue_location: hostingForm.venue_location || hostingForm.venue_name,
-      ticket_tiers: formattedTiers
-    };
+    // Sends the entire array as a single stringified JSON block
+    formData.append('ticket_tiers', JSON.stringify(formattedTiers));
 
     try {
       if (editingEventId) {
-        await api.put(`/events/${editingEventId}/`, payload);
+        await api.patch(`/events/${editingEventId}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
       } else {
-        await api.post('/events/', payload);
+        await api.post('/events/', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
       }
       
       setIsHostingOpen(false);
@@ -283,7 +287,6 @@ export default function Events() {
         </div>
       )}
 
-      {/* Host / Edit Event Modal with Dropdown Ticket Tiers */}
       {isHostingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 overflow-y-auto py-10">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={() => setIsHostingOpen(false)} />
@@ -316,6 +319,23 @@ export default function Events() {
                   placeholder="e.g. Zindua Capstone Presentations"
                   className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-emerald-300 mb-1">Event Images / Banners</label>
+                <div className="relative">
+                  <ImageIcon className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3" />
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full bg-emerald-900/50 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-emerald-300 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-800 file:text-emerald-200 hover:file:bg-emerald-700 cursor-pointer"
+                  />
+                </div>
+                {imageFiles.length > 0 && (
+                  <p className="text-[10px] text-emerald-400 mt-1">{imageFiles.length} file(s) selected.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -367,7 +387,6 @@ export default function Events() {
                 </div>
               </div>
 
-              {/* Dynamic Multiple Ticket Tiers Section with Dropdown Choices */}
               <div className="p-4 bg-emerald-900/30 border border-emerald-800 rounded-2xl space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Ticket Tiers & Pricing</span>
@@ -469,15 +488,29 @@ export default function Events() {
         </div>
       )}
 
-      {/* Event Details & Ticket Purchasing Modal with Clear Tier Selection & Descriptions */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" onClick={handleCloseModal} />
           <div className="relative bg-emerald-950 border border-emerald-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 space-y-6 overflow-hidden max-h-[90vh] overflow-y-auto">
-            <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors">
+            <button onClick={handleCloseModal} className="absolute top-4 right-4 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 p-2 rounded-full transition-colors z-20">
               <X className="w-5 h-5" />
             </button>
             
+            {selectedEvent.images && selectedEvent.images.length > 0 && (
+               <div className="w-full h-48 sm:h-64 rounded-2xl overflow-hidden mb-4 relative shadow-lg">
+                 <img 
+                   src={selectedEvent.images[0].image_url} 
+                   alt={selectedEvent.title} 
+                   className="w-full h-full object-cover"
+                 />
+                 {selectedEvent.images.length > 1 && (
+                   <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-md">
+                     + {selectedEvent.images.length - 1} More Photos
+                   </div>
+                 )}
+               </div>
+            )}
+
             <div className="flex justify-between items-start gap-4 pr-8">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
@@ -500,7 +533,6 @@ export default function Events() {
               </div>
             </div>
 
-            {/* Selectable Ticket Tiers with Detailed Perks / Descriptions */}
             <div>
               <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3">Select Ticket Tier</h3>
               <div className="space-y-3">
