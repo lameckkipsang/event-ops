@@ -198,7 +198,7 @@ class MpesaCallbackView(APIView):
                 if transaction_record.ticket:
                     Notification.objects.create(
                         user=transaction_record.ticket.event.organizer,
-                        title="Failed Payment Alert ⚠️",
+                        title="Failed Payment Alert",
                         message=f"A ticket purchase failed for {transaction_record.ticket.event.title}. Check your dashboard to follow up.",
                         link="/organizer/dashboard"
                     )
@@ -209,7 +209,7 @@ class MpesaCallbackView(APIView):
 
                     Notification.objects.create(
                         user=transaction_record.organizer,
-                        title="Vendor Payment Failed ⚠️",
+                        title="Vendor Payment Failed",
                         message=f"Your escrow payment for {transaction_record.booking.package.title} failed. The vendor was NOT notified. Please try booking again.",
                         link="/organizer/dashboard"
                     )
