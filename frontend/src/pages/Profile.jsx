@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt } from 'lucide-react';
+import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt, Bell } from 'lucide-react';
 import api from '../services/api';
 import ReceiptCard from '../components/ReceiptCard';
 
@@ -12,6 +12,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -54,6 +55,12 @@ export default function Profile() {
       api.get('/finance/transactions/')
         .then((res) => setTransactions(res.data))
         .catch((err) => console.error('Failed to fetch transactions:', err));
+    }
+    // Fetch notifications when the tab is active
+    if (activeTab === 'notifications') {
+      api.get('/accounts/notifications/history/')
+        .then((res) => setNotifications(res.data))
+        .catch((err) => console.error('Failed to fetch notifications:', err));
     }
   }, [activeTab]);
 
@@ -116,7 +123,7 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white space-y-6">
       
       {/* Navigation Tabs */}
-      <div className="flex gap-4 border-b border-emerald-800/80 pb-3 no-print">
+      <div className="flex flex-wrap gap-4 border-b border-emerald-800/80 pb-3 no-print">
         <button
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
@@ -142,6 +149,19 @@ export default function Profile() {
             Receipts & My Tickets
           </button>
         )}
+
+        {/* Notifications History Tab */}
+        <button
+            onClick={() => setActiveTab('notifications')}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all ${
+              activeTab === 'notifications' 
+                ? 'bg-emerald-700 text-white shadow-lg' 
+                : 'text-emerald-300/70 hover:text-white'
+            }`}
+          >
+            <Bell className="w-4 h-4" /> 
+            Notifications History
+        </button>
       </div>
 
       {error && (
@@ -266,7 +286,11 @@ export default function Profile() {
                 <div className="relative">
                   <div className="w-20 h-20 rounded-2xl overflow-hidden border border-orange-500/30 bg-emerald-900 flex items-center justify-center">
                     {previewImage || user?.profile_picture ? (
-                      <img src={previewImage || user.profile_picture} alt="Upload Preview" className="w-full h-full object-cover" />
+                      <img
+                        src={previewImage || user.profile_picture}
+                        alt="Upload Preview"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <Camera className="w-8 h-8 text-emerald-400" />
                     )}
@@ -327,6 +351,31 @@ export default function Profile() {
             </form>
           )}
         </>
+      ) : activeTab === 'notifications' ? (
+        // Notifications Tab Content
+        <div className="space-y-6 pt-2">
+            <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2 no-print">
+                <Bell className="w-6 h-6 text-orange-500" /> 
+                Notifications History
+            </h2>
+            {notifications.length === 0 ? (
+                <div className="p-8 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm">
+                    No notifications found.
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {notifications.map(n => (
+                        <div key={n.id} className={`p-4 rounded-xl border ${!n.is_read ? 'bg-emerald-900/50 border-emerald-700' : 'bg-emerald-950 border-emerald-900'}`}>
+                            <div className="flex justify-between items-start">
+                                <h3 className="font-bold text-white text-sm">{n.title}</h3>
+                                <span className="text-[10px] text-emerald-400/60">{new Date(n.created_at).toLocaleString()}</span>
+                            </div>
+                            <p className="text-xs text-emerald-300/80 mt-1">{n.message}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
       ) : (
         <div className="space-y-6 pt-2">
           <h2 className="text-2xl font-extrabold text-emerald-400 flex items-center gap-2 no-print">
