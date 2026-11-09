@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from django.views import View
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserRegisterSerializer, UserProfileSerializer, CustomTokenObtainPairSerializer, NotificationSerializer
@@ -11,6 +12,11 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class LoginView(View):
     def get(self, request):
@@ -73,9 +79,20 @@ class NotificationHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-        serializer = NotificationSerializer(notifications, many=True)
-        return Response(serializer.data)
+        queryset = Notification.objects.filter(user=request.user).order_by('-created_at')
+        
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(created_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__date__lte=date_to)
+            
+        paginator = StandardResultsSetPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        serializer = NotificationSerializer(paginated_queryset, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def patch(self, request, pk=None):
         if pk:
