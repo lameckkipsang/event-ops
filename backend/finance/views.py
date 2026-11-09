@@ -3,6 +3,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions, generics
+from rest_framework.pagination import PageNumberPagination
 from django.utils.crypto import get_random_string
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
@@ -11,6 +12,11 @@ from events.models import Event
 from .daraja import initiate_stk_push
 from django.conf import settings
 from .serializers import TransactionSerializer
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class InitiateTicketSTKPushView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -93,7 +99,6 @@ class InitiateVendorBookingSTKPushView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Confirm ownership of the target event
         try:
             target_event = Event.objects.get(id=event_id, organizer=request.user)
         except Event.DoesNotExist:
@@ -174,7 +179,7 @@ class MpesaCallbackView(APIView):
                         user=transaction_record.ticket.event.organizer,
                         title="New Ticket Sold!",
                         message=f"You just sold a {transaction_record.ticket.tier.ticket_type} ticket for {transaction_record.ticket.event.title}.",
-                        link="/organizer/dashboard"
+                        link="/organizer/bookings"
                     )
                 elif transaction_record.booking:
                     Notification.objects.create(
@@ -203,7 +208,6 @@ class MpesaCallbackView(APIView):
                         link="/organizer/dashboard"
                     )
                 elif transaction_record.booking:
-                    # Prevent Ghost Booking by Canceling the booking request on failed payment
                     transaction_record.booking.status = 'DECLINED'
                     transaction_record.booking.save()
 
@@ -265,11 +269,23 @@ class ReleaseEscrowView(APIView):
 class TransactionHistoryListView(generics.ListAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            return Transaction.objects.all().order_by('-created_at')
-        if getattr(user, 'role', None) == 'VENDOR':
-            return Transaction.objects.filter(booking__package__vendor=user).order_by('-created_at')
-        return Transaction.objects.filter(organizer=user).order_by('-created_at')
+            queryset = Transaction.objects.all().order_by('-created_at')
+        elif getattr(user, 'role', None) == 'VENDOR':
+            queryset = Transaction.objects.filter(booking__package__vendor=user).order_by('-created_at')
+        else:
+            queryset = Transaction.objects.filter(organizer=user).order_by('-created_at')
+            
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(created_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__date__lte=date_to)
+            
+        return queryset
