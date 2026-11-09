@@ -7,9 +7,15 @@ from django.apps import apps
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions, generics
+from rest_framework.pagination import PageNumberPagination
 from .models import Ticket, TicketTier
 from events.models import Event
 from .serializers import TicketSerializer, TicketCheckInSerializer, TicketTierSerializer, EventSerializer
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class TicketPurchaseView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -22,7 +28,6 @@ class TicketPurchaseView(APIView):
         except TicketTier.DoesNotExist:
             return Response({"error": "Invalid or non-existent ticket tier."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Prevent organizers from buying their own tickets
         if tier.event.organizer == request.user:
             return Response(
                 {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
@@ -43,13 +48,21 @@ class TicketPurchaseView(APIView):
         serializer = TicketSerializer(ticket)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class UserTicketListView(APIView):
+class UserTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TicketSerializer
+    pagination_class = StandardResultsSetPagination
 
-    def get(self, request):
-        tickets = Ticket.objects.filter(attendee=request.user).order_by('-purchased_at')
-        serializer = TicketSerializer(tickets, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def get_queryset(self):
+        queryset = Ticket.objects.filter(attendee=self.request.user).order_by('-purchased_at')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(purchased_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(purchased_at__date__lte=date_to)
+        return queryset
 
 class TicketCheckInView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -93,13 +106,13 @@ class TicketCheckInView(APIView):
             "event": ticket.event.title if hasattr(ticket.event, 'title') else str(ticket.event)
         }, status=status.HTTP_200_OK)
 
-class TicketTierListView(APIView):
+class TicketTierListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
-
-    def get(self, request):
-        tiers = TicketTier.objects.filter(quantity_available__gt=0)
-        serializer = TicketTierSerializer(tiers, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    serializer_class = TicketTierSerializer
+    pagination_class = StandardResultsSetPagination
+    
+    def get_queryset(self):
+        return TicketTier.objects.filter(quantity_available__gt=0)
 
 class CheckoutInitiateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -120,7 +133,6 @@ class CheckoutInitiateView(APIView):
         except TicketTier.DoesNotExist:
             return Response({"error": "Ticket tier not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Prevent organizers from initiating M-Pesa STK push for their own event tickets
         if tier.event.organizer == request.user:
             return Response(
                 {"error": "Security Exception: You cannot purchase tickets to your own event."}, 
@@ -184,28 +196,33 @@ class CheckoutInitiateView(APIView):
                 "details": stk_data
             }, status=status.HTTP_400_BAD_REQUEST)
 
-class OrganizerTicketListView(APIView):
+class OrganizerTicketListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TicketSerializer
+    pagination_class = StandardResultsSetPagination
 
-    def get(self, request):
-        user = request.user
+    def get_queryset(self):
+        user = self.request.user
         if user.is_staff:
-            tickets = Ticket.objects.all().order_by('-purchased_at')
+            queryset = Ticket.objects.all().order_by('-purchased_at')
         else:
-            tickets = Ticket.objects.filter(event__organizer=user).order_by('-purchased_at')
+            queryset = Ticket.objects.filter(event__organizer=user).order_by('-purchased_at')
             
-        serializer = TicketSerializer(tickets, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            queryset = queryset.filter(purchased_at__date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(purchased_at__date__lte=date_to)
+        return queryset
 
 class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all().order_by('-created_at')
     serializer_class = EventSerializer
+    pagination_class = StandardResultsSetPagination
 
 class OrganizerDashboardView(APIView):
-    """
-    Aggregates ticket sales, revenue metrics, attendee contact info,
-    AND outgoing vendor requests for the Organizer's Dashboard in a single payload.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -216,10 +233,23 @@ class OrganizerDashboardView(APIView):
         events = Event.objects.filter(organizer=user)
         event_data = [{"id": e.id, "title": e.title} for e in events]
         
-        # Fetch Ticket Sales & Metrics
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        
         transactions = Transaction.objects.filter(
             ticket__event__organizer=user
         ).select_related('ticket', 'ticket__attendee').order_by('-created_at')
+        
+        vendor_requests = BookingRequest.objects.filter(
+            organizer=user
+        ).select_related('package', 'event').order_by('-created_at')
+        
+        if date_from:
+            transactions = transactions.filter(created_at__date__gte=date_from)
+            vendor_requests = vendor_requests.filter(created_at__date__gte=date_from)
+        if date_to:
+            transactions = transactions.filter(created_at__date__lte=date_to)
+            vendor_requests = vendor_requests.filter(created_at__date__lte=date_to)
         
         sales_data = []
         total_revenue = 0
@@ -250,8 +280,6 @@ class OrganizerDashboardView(APIView):
                 "attendee_phone": phone
             })
 
-        # Fetch Outgoing Vendor Bookings 
-        vendor_requests = BookingRequest.objects.filter(organizer=user).select_related('package', 'event').order_by('-created_at')
         vendor_data = []
         for b in vendor_requests:
             vendor_data.append({
