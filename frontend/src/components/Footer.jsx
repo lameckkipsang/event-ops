@@ -44,7 +44,7 @@ export default function Footer() {
             <h4 className="text-sm font-semibold uppercase tracking-wider text-orange-400">Platform</h4>
             <ul className="space-y-2 text-sm text-emerald-200/80">
               <li>
-                <Link to="/terms" className="hover:text-orange-400 transition-colors">
+                <Link to="/escrow-policy" className="hover:text-orange-400 transition-colors">
                   Escrow Policy
                 </Link>
               </li>
