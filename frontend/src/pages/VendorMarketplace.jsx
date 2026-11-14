@@ -42,7 +42,9 @@ export default function VendorMarketplace() {
 
   const jwtData = token ? parseJwt(token) : null;
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
-  const isVendor = token && role === 'VENDOR';
+  
+  // Allow SECURITY to act as a VENDOR in the UI
+  const isVendor = token && (role === 'VENDOR' || role === 'SECURITY');
 
   const fetchPackages = () => {
     setLoading(true);
