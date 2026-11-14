@@ -27,6 +27,7 @@ class VendorPackageSerializer(serializers.ModelSerializer):
             'title',
             'tier',
             'tier_display',
+            'image',
             'description', 
             'price', 
             'is_available', 
@@ -82,7 +83,7 @@ class BookingRequestSerializer(serializers.ModelSerializer):
             validated_data['organizer'] = request.user
             
         booking = super().create(validated_data)
-        
+
         # Trigger Toast for the Vendor
         Notification.objects.create(
             user=booking.package.vendor,
