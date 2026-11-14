@@ -113,11 +113,12 @@ export default function Navbar() {
               <Store className="w-4 h-4" /> Marketplace
             </Link>
 
-            {role === 'VENDOR' && (
+            {/* Enable Vendor Dashboard access for SECURITY users */}
+            {(role === 'VENDOR' || role === 'SECURITY') && (
               <Link to="/vendor/dashboard" className={linkClass('/vendor/dashboard')}>
                 <LayoutDashboard className="w-4 h-4" /> Vendor Dashboard
               </Link>
-            )}
+            )}          
             {role === 'ORGANIZER' && (
               <Link to="/organizer/bookings" className={linkClass('/organizer/bookings')}>
                 <LayoutDashboard className="w-4 h-4" /> Manage Events
