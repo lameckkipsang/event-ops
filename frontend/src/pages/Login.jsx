@@ -120,7 +120,7 @@ export default function Login() {
           </h1>
           
           <p className="text-emerald-200/80 text-base leading-relaxed">
-            The escrow-powered platform protecting organizers, attendees, and vendors — one workspace for tickets, bookings, and check-ins.
+            The escrow-powered platform protecting organizers, attendees, and vendors, one workspace for tickets, bookings, and check-ins.
           </p>
           
           <div className="space-y-4 pt-4">
