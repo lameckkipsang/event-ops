@@ -20,7 +20,9 @@ export default function Navbar() {
       if (token) {
         try {
             const res = await api.get('accounts/notifications/history/');
-            setNotifications(res.data);
+            // Handle paginated response structure safely
+            const data = res.data.results || res.data || [];
+            setNotifications(data);
         } catch (err) {
             console.error("Failed fetching notifications", err);
         }
@@ -45,12 +47,8 @@ export default function Navbar() {
 
   const handleMarkAsRead = async (id) => {
       try {
-          // instantly clear the dot visually
           setNotifications(prev => prev.map(n => n.id === id ? {...n, is_read: true} : n));
-          
-          // Send the payload so the database actually updates
           await api.patch(`accounts/notifications/${id}/`, { is_read: true });
-          
           await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking read", err);
@@ -60,18 +58,12 @@ export default function Navbar() {
   const handleMarkAllAsRead = async () => {
       try {
           const unreadNotifications = notifications.filter(n => !n.is_read);
-          
-          // instantly clear the dot visually
           setNotifications(prev => prev.map(n => ({...n, is_read: true})));
-          
-          // Safely map through unread notifications and update them concurrently 
-          // because DRF doesn't support bulk PATCH on list endpoints by default
           await Promise.all(
               unreadNotifications.map(n => 
                   api.patch(`accounts/notifications/${n.id}/`, { is_read: true })
               )
           );
-          
           await fetchNotifications(); 
       } catch(err) {
           console.error("Failed marking all as read", err);
@@ -106,7 +98,7 @@ export default function Navbar() {
               </div>
             </Link>
             <div className="flex items-center cursor-default select-none">
-              <span className="font-extrabold text-lg tracking-tight text-white">EventOps</span>
+              <span className="font-extrabold text-3xl tracking-tight text-white">EventOps</span>
             </div>
           </div>
 
@@ -158,7 +150,6 @@ export default function Navbar() {
                       <div className="p-3 border-b border-emerald-800 bg-emerald-900/50 flex justify-between items-center">
                         <span className="text-xs font-bold text-emerald-300">Notifications</span>
                         <div className="flex gap-3 items-center">
-                           {/* Mark all as read button */}
                            {unreadCount > 0 && (
                              <button onClick={handleMarkAllAsRead} className="text-[10px] font-semibold text-emerald-400 hover:text-white transition-colors">
                                Mark all read
