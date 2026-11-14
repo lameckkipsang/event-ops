@@ -8,7 +8,6 @@ export default function VendorDashboard() {
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
   
-  // Backend Pagination & Date State
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,13 +22,10 @@ export default function VendorDashboard() {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
 
-      // Ensure your api call uses the new marketplace view if booking endpoint was moved 
-      // Adjust endpoint if necessary (e.g. 'marketplace/bookings/' vs 'bookings/')
-      const response = await api.get('marketplace/bookings/', { params });
+      const response = await api.get('bookings/', { params });
       
       if (response.data && response.data.results !== undefined) {
           setBookings(response.data.results);
-          // Assumes the backend PageNumberPagination max items is 10 by default
           setTotalPages(Math.ceil(response.data.count / 10));
       } else {
           setBookings(response.data);
@@ -46,15 +42,15 @@ export default function VendorDashboard() {
   };
 
   useEffect(() => {
-    fetchBookings(1); // Reset to page 1 when dates change
+    fetchBookings(1); 
   }, [dateFrom, dateTo]);
 
   const handleUpdateStatus = async (bookingId, newStatus) => {
     setActionLoading(bookingId);
     setError('');
     try {
-      await api.patch(`marketplace/bookings/${bookingId}/status/`, { status: newStatus });
-      await fetchBookings(currentPage); // Refresh current page
+      await api.patch(`bookings/${bookingId}/status/`, { status: newStatus });
+      await fetchBookings(currentPage); 
     } catch (err) {
       console.error('Failed to update booking status:', err);
       setError('Failed to update booking status. Please try again.');
@@ -79,7 +75,6 @@ export default function VendorDashboard() {
           </p>
         </div>
 
-        {/* Date Filters */}
         <div className="bg-emerald-950/80 p-3 rounded-2xl border border-emerald-700/50 flex flex-wrap items-center gap-3 shadow-inner w-full md:w-auto">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
              <Filter className="w-4 h-4 text-orange-400" /> Filter:
@@ -207,7 +202,6 @@ export default function VendorDashboard() {
             })}
           </div>
 
-          {/* Backend Pagination Controls */}
           {totalPages > 1 && (
             <div className="bg-emerald-950/40 p-4 border border-emerald-800/80 rounded-2xl flex justify-between items-center text-sm mt-6 shadow-inner">
                <span className="text-emerald-400/80 font-bold">Page {currentPage} of {totalPages}</span>
