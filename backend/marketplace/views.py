@@ -110,7 +110,8 @@ class BookingRequestViewSet(viewsets.ModelViewSet):
         
         if user.is_staff:
             queryset = BookingRequest.objects.all()
-        elif getattr(user, 'role', None) == 'VENDOR':
+        # Allow SECURITY role to fetch incoming booking requests alongside VENDOR
+        elif getattr(user, 'role', None) in ['VENDOR', 'SECURITY']:
             queryset = BookingRequest.objects.filter(
                 package__vendor=user,
                 transaction__status='COMPLETED'
