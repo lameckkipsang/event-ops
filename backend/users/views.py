@@ -44,10 +44,12 @@ User = get_user_model()
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
+    
     def get_serializer_class(self):
         if self.action == 'create':
             return UserRegisterSerializer
         return UserProfileSerializer
+        
     def get_permissions(self):
         if self.action == 'create':
             return [permissions.AllowAny()]
@@ -60,6 +62,29 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
     callback_url = "http://localhost:8000"
+
+    def post(self, request, *args, **kwargs):
+        # dj-rest-auth process the Google token and create/login the user
+        response = super().post(request, *args, **kwargs)
+        
+        # Extract the role passed from the frontend RoleSelectModal
+        role = request.data.get('role')
+        
+        # Get the authenticated user instance
+        user = getattr(self, 'user', None)
+        if not user and request.user.is_authenticated:
+            user = request.user
+
+        # Force override the user's role if one was provided
+        if user and role:
+            user.role = role
+            user.save(update_fields=['role'])
+            
+            # Ensure the updated role is immediately reflected in the API response payload
+            if 'user' in response.data:
+                response.data['user']['role'] = user.role
+                
+        return response
 
 class NotificationListView(APIView):
     permission_classes = [IsAuthenticated]
