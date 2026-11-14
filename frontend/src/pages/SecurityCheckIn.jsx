@@ -17,7 +17,7 @@ export default function SecurityCheckIn() {
     setResult(null);
 
     try {
-      const response = await api.post('tickets/security/check-in/', {
+      const response = await api.post('tickets/check-in/', {
         ticket_code: ticketCode.trim().toUpperCase(),
       });
       setResult(response.data);
