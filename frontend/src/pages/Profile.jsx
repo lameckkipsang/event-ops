@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Mail, Phone, Building, ShieldCheck, LogOut, Edit2, Save, X, Camera, Ticket, Receipt, Bell } from 'lucide-react';
+import { User, Mail, Phone, Building, ShieldCheck, Edit2, Save, X, Camera, Ticket, Receipt, Bell } from 'lucide-react';
 import api from '../services/api';
 import ReceiptCard from '../components/ReceiptCard';
 
@@ -53,12 +53,19 @@ export default function Profile() {
   useEffect(() => {
     if (activeTab === 'tickets_receipts') {
       api.get('/finance/transactions/')
-        .then((res) => setTransactions(res.data))
+        .then((res) => {
+            const data = res.data?.results ? res.data.results : (Array.isArray(res.data) ? res.data : []);
+            setTransactions(data);
+        })
         .catch((err) => console.error('Failed to fetch transactions:', err));
     }
     if (activeTab === 'notifications') {
       api.get('/accounts/notifications/history/')
-        .then((res) => setNotifications(res.data))
+        .then((res) => {
+            // Handle paginated arrays safely
+            const data = res.data?.results ? res.data.results : (Array.isArray(res.data) ? res.data : []);
+            setNotifications(data);
+        })
         .catch((err) => console.error('Failed to fetch notifications:', err));
     }
   }, [activeTab]);
@@ -104,11 +111,9 @@ export default function Profile() {
     }
   };
 
-  // Concurrently update all unread notifications to bypass DRF bulk-list limitations
   const handleMarkAllAsRead = async () => {
     try {
         const unreadNotifications = notifications.filter(n => !n.is_read);
-        
         setNotifications(prev => prev.map(n => ({...n, is_read: true})));
         
         await Promise.all(
@@ -119,12 +124,6 @@ export default function Profile() {
     } catch(err) {
         console.error("Failed marking all as read", err);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    navigate('/login');
   };
 
   if (loading) {
@@ -138,7 +137,6 @@ export default function Profile() {
   return (
     <div className="max-w-4xl mx-auto my-12 p-8 bg-emerald-900/60 border border-emerald-800/80 rounded-3xl shadow-2xl text-white space-y-6">
       
-      {/* Navigation Tabs */}
       <div className="flex flex-wrap gap-4 border-b border-emerald-800/80 pb-3 no-print">
         <button
           onClick={() => setActiveTab('profile')}
@@ -238,14 +236,6 @@ export default function Profile() {
                   Cancel
                 </button>
               )}
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
             </div>
           </div>
 
@@ -371,7 +361,6 @@ export default function Profile() {
                     <Bell className="w-6 h-6 text-orange-500" /> 
                     Notifications History
                 </h2>
-                {/* Mark all as read button for the Profile page */}
                 {notifications.some(n => !n.is_read) && (
                     <button 
                         onClick={handleMarkAllAsRead} 
@@ -381,7 +370,7 @@ export default function Profile() {
                     </button>
                 )}
             </div>
-            {notifications.length === 0 ? (
+            {!Array.isArray(notifications) || notifications.length === 0 ? (
                 <div className="p-8 bg-emerald-950/60 border border-emerald-800 rounded-2xl text-center text-emerald-300/70 text-sm">
                     No notifications found.
                 </div>
