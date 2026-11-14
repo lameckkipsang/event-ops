@@ -20,8 +20,8 @@ export default function Navbar() {
       if (token) {
         try {
             const res = await api.get('accounts/notifications/history/');
-            // Handle paginated response structure safely
-            const data = res.data.results || res.data || [];
+            // type-check and extract the array to prevent .filter() crashes
+            const data = res.data?.results ? res.data.results : (Array.isArray(res.data) ? res.data : []);
             setNotifications(data);
         } catch (err) {
             console.error("Failed fetching notifications", err);
@@ -84,7 +84,7 @@ export default function Navbar() {
         : 'text-emerald-200 hover:bg-emerald-900/80 hover:text-white'
     }`;
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.is_read).length : 0;
 
   return (
     <nav className="bg-emerald-950/90 border-b border-emerald-800/80 sticky top-0 z-50 backdrop-blur-md">
@@ -159,7 +159,7 @@ export default function Navbar() {
                         </div>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
-                        {notifications.length === 0 ? (
+                        {!Array.isArray(notifications) || notifications.length === 0 ? (
                            <div className="p-4 text-center text-xs text-emerald-400/70">No new notifications</div>
                         ) : (
                           notifications.slice(0, 5).map(n => (
