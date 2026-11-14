@@ -17,6 +17,7 @@ class VendorPackage(models.Model):
         STANDARD = 'STANDARD', 'Standard'
         PREMIUM = 'PREMIUM', 'Premium'
         CUSTOM = 'CUSTOM', 'Custom'
+    
     vendor = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
@@ -34,6 +35,10 @@ class VendorPackage(models.Model):
         choices=TierChoices.choices,
         default=TierChoices.STANDARD
     )
+    
+    # Image field for vendor banners
+    image = models.ImageField(upload_to='vendor_packages/banners/', null=True, blank=True)
+    
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     is_available = models.BooleanField(default=True)
