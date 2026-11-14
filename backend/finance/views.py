@@ -275,7 +275,8 @@ class TransactionHistoryListView(generics.ListAPIView):
         user = self.request.user
         if user.is_staff:
             queryset = Transaction.objects.all().order_by('-created_at')
-        elif getattr(user, 'role', None) == 'VENDOR':
+        # Allow SECURITY role to fetch their transaction history alongside VENDOR
+        elif getattr(user, 'role', None) in ['VENDOR', 'SECURITY']:
             queryset = Transaction.objects.filter(booking__package__vendor=user).order_by('-created_at')
         else:
             queryset = Transaction.objects.filter(organizer=user).order_by('-created_at')
