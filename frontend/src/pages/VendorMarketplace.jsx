@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2, Mail, Phone, Building } from 'lucide-react';
+import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2, Mail, Phone } from 'lucide-react';
 import { marketplaceService } from '../services/marketplaceApi';
 import api from '../services/api';
 
@@ -12,7 +12,6 @@ export default function VendorMarketplace() {
   const [selectedTier, setSelectedTier] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Vendor Management State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPackageId, setEditingPackageId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -51,10 +50,9 @@ export default function VendorMarketplace() {
     if (selectedCategory) params.category = selectedCategory;
     if (selectedTier) params.tier = selectedTier;
 
-    api.get('marketplace/packages/', { params })
+    api.get('packages/', { params })
       .then(response => {
-        // Backend now returns grouped list originally due to the overridden list method
-        const data = response.data.results || response.data;
+        const data = response.data?.results ? response.data.results : (Array.isArray(response.data) ? response.data : []);
         setGroupedVendors(data);
       })
       .catch(err => {
@@ -126,7 +124,7 @@ export default function VendorMarketplace() {
     if (!window.confirm("Are you sure you want to remove this service from the marketplace?")) return;
     
     try {
-      await api.delete(`marketplace/packages/${id}/`);
+      await api.delete(`packages/${id}/`);
       fetchPackages();
     } catch (err) {
       console.error("Failed to delete package:", err);
@@ -141,9 +139,9 @@ export default function VendorMarketplace() {
 
     try {
       if (editingPackageId) {
-        await api.patch(`marketplace/packages/${editingPackageId}/`, formData);
+        await api.patch(`packages/${editingPackageId}/`, formData);
       } else {
-        await api.post(`marketplace/packages/`, formData);
+        await api.post(`packages/`, formData);
       }
       setIsModalOpen(false);
       fetchPackages();
@@ -235,7 +233,6 @@ export default function VendorMarketplace() {
 
             return (
               <div key={idx} className="bg-emerald-900/20 border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl">
-                {/* Vendor Company Header */}
                 <div className="bg-emerald-950/80 p-6 border-b border-emerald-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-orange-500/20 border border-orange-500/40 rounded-2xl flex items-center justify-center text-orange-400 text-xl font-black shadow-lg">
@@ -258,7 +255,6 @@ export default function VendorMarketplace() {
                   </div>
                 </div>
 
-                {/* Vendor Packages / Tiers */}
                 <div className="p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 bg-emerald-900/10">
                   {vendorGroup.packages.map((pkg) => (
                     <div key={pkg.id} className="bg-emerald-950/90 border border-emerald-800/60 rounded-2xl p-6 flex flex-col justify-between hover:border-emerald-600 transition-colors shadow-lg">
@@ -317,8 +313,8 @@ export default function VendorMarketplace() {
 
       {/* Full Screen Create / Edit Package Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-emerald-950 overflow-y-auto w-full h-full">
-          <div className="w-full max-w-3xl mx-auto p-6 sm:p-12 space-y-8 pb-32 mt-4 sm:mt-10">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-emerald-950 w-full h-full overflow-y-auto">
+          <div className="w-full max-w-4xl mx-auto p-6 sm:p-12 space-y-8 pb-32 mt-4">
             <div className="flex justify-between items-center border-b border-emerald-800/80 pb-6">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-3 py-1 rounded-lg border border-orange-500/30">
@@ -341,7 +337,6 @@ export default function VendorMarketplace() {
             )}
 
             <form onSubmit={handleSubmit} className="bg-emerald-900/20 p-8 rounded-3xl border border-emerald-800/60 space-y-8">
-              
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-emerald-300 mb-2">Package Title</label>
