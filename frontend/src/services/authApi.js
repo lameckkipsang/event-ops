@@ -1,12 +1,12 @@
-// src/services/authApi.js
 import api from './api';
 
 export const authService = {
   // Sends the Google access token received from Google's SDK to Django backend (dj_rest_auth)
-  googleLogin: async (accessToken, role = 'ATTENDEE') => {
+  googleLogin: async (accessToken, role = null, isRegister = false) => {
     const response = await api.post('auth/google/', {
       access_token: accessToken,
-      role: role, // Passes preferred role for first-time account creation
+      role: role,
+      is_register: isRegister // Tells backend whether to block existing accounts
     });
     return response.data;
   },
