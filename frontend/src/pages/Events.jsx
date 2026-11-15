@@ -57,7 +57,6 @@ export default function Events() {
   const fetchEvents = () => {
     api.get('/events/')
       .then((response) => {
-        // Handle paginated responses properly
         const data = response.data.results || response.data;
         setEvents(data);
       })
@@ -251,7 +250,7 @@ export default function Events() {
           <p className="text-emerald-200/70 mt-1">Explore upcoming events and check available ticket tiers.</p>
         </div>
 
-        {isOrganizer && (
+        {isOrganizer ? (
           <button
             onClick={handleOpenCreateModal}
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-orange-500/20 flex items-center gap-2 transition-all shrink-0"
@@ -259,6 +258,10 @@ export default function Events() {
             <PlusCircle className="w-5 h-5" />
             <span>Host a New Event</span>
           </button>
+        ) : (
+          <div className="bg-emerald-950/60 border border-emerald-800 px-4 py-2.5 rounded-xl text-emerald-300 text-xs font-semibold">
+            Signed in as Attendee
+          </div>
         )}
       </div>
 
