@@ -12,6 +12,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
+from django.utils import timezone
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -64,23 +65,34 @@ class GoogleLogin(SocialLoginView):
     callback_url = "http://localhost:8000"
 
     def post(self, request, *args, **kwargs):
-        # dj-rest-auth process the Google token and create/login the user
+        is_register = request.data.get('is_register', False)
+        role = request.data.get('role')
+
+        # dj-rest-auth processes the Google token and creates or logs in the user
         response = super().post(request, *args, **kwargs)
         
-        # Extract the role passed from the frontend RoleSelectModal
-        role = request.data.get('role')
-        
-        # Get the authenticated user instance
         user = getattr(self, 'user', None)
         if not user and request.user.is_authenticated:
             user = request.user
 
-        # Force override the user's role if one was provided
-        if user and role:
-            user.role = role
-            user.save(update_fields=['role'])
+        if user:
+            # Check if this user was just created (within the last 10 seconds)
+            time_since_joined = (timezone.now() - user.date_joined).total_seconds()
+            is_new_user = time_since_joined < 10
+
+            # If they tried to register, but the account already exists, reject it
+            if is_register and not is_new_user:
+                return Response(
+                    {"error": "This Google account is already registered. Please sign in instead."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Only override the role if the user is genuinely new
+            if role and is_new_user:
+                user.role = role
+                user.save(update_fields=['role'])
             
-            # Ensure the updated role is immediately reflected in the API response payload
+            # Ensure the API response payload reflects the user's correct role
             if 'user' in response.data:
                 response.data['user']['role'] = user.role
                 
