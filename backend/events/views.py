@@ -23,8 +23,11 @@ class EventViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         images_data = request.FILES.getlist('images')
         
-        # Copy the mutable QueryDict so it can unpack the stringified JSON
-        data = request.data.copy()
+        # Safely build a mutable dict excluding file streams to prevent pickling errors
+        data = {}
+        for key, value in request.data.lists():
+            if key != 'images':
+                data[key] = value[0] if len(value) == 1 else value
         
         # Parse the stringified ticket tiers from the frontend
         if 'ticket_tiers' in data and isinstance(data['ticket_tiers'], str):
@@ -50,7 +53,10 @@ class EventViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        data = request.data.copy()
+        data = {}
+        for key, value in request.data.lists():
+            if key != 'images':
+                data[key] = value[0] if len(value) == 1 else value
         
         # Parse the stringified ticket tiers during edits
         if 'ticket_tiers' in data and isinstance(data['ticket_tiers'], str):
@@ -88,7 +94,11 @@ class EventListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         images_data = request.FILES.getlist('images')
         
-        data = request.data.copy()
+        data = {}
+        for key, value in request.data.lists():
+            if key != 'images':
+                data[key] = value[0] if len(value) == 1 else value
+
         if 'ticket_tiers' in data and isinstance(data['ticket_tiers'], str):
             try:
                 data['ticket_tiers'] = json.loads(data['ticket_tiers'])
