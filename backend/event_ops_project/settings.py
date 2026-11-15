@@ -69,6 +69,8 @@ REST_AUTH = {
     'PASSWORD_RESET_SERIALIZER': 'users.serializers.CustomPasswordResetSerializer',
 }
 
+ACCOUNT_ADAPTER = 'users.adapter.CustomAccountAdapter'
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
