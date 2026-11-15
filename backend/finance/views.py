@@ -1,17 +1,18 @@
 import uuid
+from datetime import timedelta
+from django.utils import timezone
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions, generics
 from rest_framework.pagination import PageNumberPagination
-from django.utils.crypto import get_random_string
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
 from tickets.models import TicketTier, Ticket
 from events.models import Event
-from .daraja import initiate_stk_push
+from .daraja import initiate_stk_push, stk_query
 from django.conf import settings
 from .serializers import TransactionSerializer
 
@@ -227,6 +228,40 @@ class MpesaCallbackView(APIView):
             return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"ResultCode": 0, "ResultDesc": "Success"})
+
+
+class TransactionStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, checkout_request_id):
+        try:
+            transaction = Transaction.objects.get(checkout_request_id=checkout_request_id)
+            
+            # Fallback: if no callback after 30s, query Daraja directly
+            if transaction.status == 'PENDING' and (timezone.now() - transaction.created_at) > timedelta(seconds=30):
+                q = stk_query(checkout_request_id)
+                result_code = q.get("ResultCode")
+                
+                if result_code is not None:
+                    if str(result_code) == "0":
+                        transaction.status = 'COMPLETED'
+                        checkout_metadata = q.get('CallbackMetadata', {}).get('Item', [])
+                        for item in checkout_metadata:
+                            if item.get('Name') == 'MpesaReceiptNumber':
+                                transaction.mpesa_receipt_number = item.get('Value')
+                    else:
+                        transaction.status = 'FAILED'
+                        transaction.escrow_status = 'CANCELLED'
+                    transaction.save()
+
+            return Response({
+                "status": transaction.status,
+                "receipt": transaction.mpesa_receipt_number,
+                "message": transaction.status
+            }, status=status.HTTP_200_OK)
+
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ReleaseEscrowView(APIView):
