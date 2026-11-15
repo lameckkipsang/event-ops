@@ -214,7 +214,7 @@ export default function Payment() {
                       <div>
                         <p className="text-sm text-orange-200 font-semibold mb-1">No Events Found</p>
                         <p className="text-xs text-emerald-200/80 mb-3">You must create an event first before you can book vendor services.</p>
-                        <Link to="/manage-events" className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors inline-block">
+                        <Link to="/events" className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors inline-block">
                           Create an Event
                         </Link>
                       </div>
