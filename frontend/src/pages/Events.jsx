@@ -54,6 +54,13 @@ export default function Events() {
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
   const isOrganizer = token && (role === 'ORGANIZER' || role === 'STAFF');
 
+  // Prevent attendees from viewing empty management routes if they land on them directly
+  useEffect(() => {
+    if (!isOrganizer && window.location.pathname.includes('/manage-events')) {
+      navigate('/events', { replace: true });
+    }
+  }, [isOrganizer, navigate]);
+
   const fetchEvents = () => {
     api.get('/events/')
       .then((response) => {
