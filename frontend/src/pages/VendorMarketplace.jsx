@@ -161,17 +161,19 @@ export default function VendorMarketplace() {
     submitData.append('price', formData.price);
     submitData.append('description', formData.description);
     
+    // Only append the image if a new file was actually selected
     if (imageFile) {
       submitData.append('image', imageFile);
     }
 
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    };
-
     try {
+      // Explicitly override the global JSON header so Axios encodes the file properly
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      };
+
       if (editingPackageId) {
         await api.patch(`packages/${editingPackageId}/`, submitData, config);
       } else {
