@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status, permissions, generics
 from rest_framework.pagination import PageNumberPagination
 from django.utils.crypto import get_random_string
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from .models import Transaction
 from marketplace.models import BookingRequest, VendorPackage
 from tickets.models import TicketTier, Ticket
@@ -150,6 +152,7 @@ class InitiateVendorBookingSTKPushView(APIView):
         return Response({"error": "Failed to initiate STK Push.", "details": daraja_response}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class MpesaCallbackView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -275,7 +278,6 @@ class TransactionHistoryListView(generics.ListAPIView):
         user = self.request.user
         if user.is_staff:
             queryset = Transaction.objects.all().order_by('-created_at')
-        # Allow SECURITY role to fetch their transaction history alongside VENDOR
         elif getattr(user, 'role', None) in ['VENDOR', 'SECURITY']:
             queryset = Transaction.objects.filter(booking__package__vendor=user).order_by('-created_at')
         else:
