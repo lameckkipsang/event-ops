@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2, Mail, Phone } from 'lucide-react';
+import { Store, Filter, PlusCircle, Edit, Trash2, X, Loader2, Mail, Phone, ImageIcon, Image as ImageIconSolid } from 'lucide-react';
 import { marketplaceService } from '../services/marketplaceApi';
 import api from '../services/api';
 
@@ -16,6 +16,7 @@ export default function VendorMarketplace() {
   const [editingPackageId, setEditingPackageId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -23,6 +24,9 @@ export default function VendorMarketplace() {
     price: '',
     description: '',
   });
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const token = localStorage.getItem('access_token');
   const role = localStorage.getItem('user_role') || '';
@@ -43,7 +47,6 @@ export default function VendorMarketplace() {
   const jwtData = token ? parseJwt(token) : null;
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
   
-  // Allow SECURITY to act as a VENDOR in the UI
   const isVendor = token && (role === 'VENDOR' || role === 'SECURITY');
 
   const fetchPackages = () => {
@@ -105,6 +108,8 @@ export default function VendorMarketplace() {
       price: '',
       description: '',
     });
+    setImageFile(null);
+    setImagePreview(null);
     setFormError('');
     setIsModalOpen(true);
   };
@@ -118,8 +123,18 @@ export default function VendorMarketplace() {
       price: pkg.price,
       description: pkg.description,
     });
+    setImageFile(null);
+    setImagePreview(pkg.image || null);
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
 
   const handleDeletePackage = async (id) => {
@@ -139,11 +154,28 @@ export default function VendorMarketplace() {
     setActionLoading(true);
     setFormError('');
 
+    const submitData = new FormData();
+    submitData.append('title', formData.title);
+    submitData.append('category', formData.category);
+    submitData.append('tier', formData.tier);
+    submitData.append('price', formData.price);
+    submitData.append('description', formData.description);
+    
+    if (imageFile) {
+      submitData.append('image', imageFile);
+    }
+
+    const config = {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    };
+
     try {
       if (editingPackageId) {
-        await api.patch(`packages/${editingPackageId}/`, formData);
+        await api.patch(`packages/${editingPackageId}/`, submitData, config);
       } else {
-        await api.post(`packages/`, formData);
+        await api.post(`packages/`, submitData, config);
       }
       setIsModalOpen(false);
       fetchPackages();
@@ -257,52 +289,65 @@ export default function VendorMarketplace() {
                   </div>
                 </div>
 
-                <div className="p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 bg-emerald-900/10">
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-emerald-900/10">
                   {vendorGroup.packages.map((pkg) => (
-                    <div key={pkg.id} className="bg-emerald-950/90 border border-emerald-800/60 rounded-2xl p-6 flex flex-col justify-between hover:border-emerald-600 transition-colors shadow-lg">
-                      <div>
+                    <div key={pkg.id} className="bg-emerald-950/90 border border-emerald-800/60 rounded-3xl flex flex-col overflow-hidden hover:border-emerald-600 transition-colors shadow-lg group">
+                      
+                      {/* Package Banner Image */}
+                      {pkg.image ? (
+                        <div className="w-full h-40 bg-emerald-900 border-b border-emerald-800/60 relative overflow-hidden">
+                           <img src={pkg.image} alt={pkg.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                           <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 to-transparent opacity-80"></div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-24 bg-emerald-900/30 border-b border-emerald-800/60 flex items-center justify-center">
+                            <ImageIcon className="w-8 h-8 text-emerald-800/50" />
+                        </div>
+                      )}
+
+                      <div className="p-6 flex-1 flex flex-col -mt-10 relative z-10">
                         <div className="flex justify-between items-start mb-4">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950/60 px-2.5 py-1 rounded-lg border border-orange-500/20">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 bg-orange-950/90 px-2.5 py-1 rounded-lg border border-orange-500/30 shadow-md backdrop-blur-sm">
                             {pkg.tier_display || pkg.tier}
                           </span>
-                          <span className="text-[10px] font-bold text-emerald-300 bg-emerald-900/80 px-2.5 py-1 rounded-lg border border-emerald-700/50">
+                          <span className="text-[10px] font-bold text-emerald-300 bg-emerald-900/90 px-2.5 py-1 rounded-lg border border-emerald-700/50 shadow-md backdrop-blur-sm">
                             {pkg.category_name}
                           </span>
                         </div>
 
-                        <h3 className="text-lg font-bold text-white mb-2">{pkg.title}</h3>
+                        <h3 className="text-xl font-bold text-white mb-2 leading-tight">{pkg.title}</h3>
                         <p className="text-emerald-200/80 text-sm line-clamp-4 mb-6">{pkg.description}</p>
-                      </div>
 
-                      <div className="pt-4 border-t border-emerald-800/40 flex items-center justify-between mt-auto">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/70 block">Package Price</span>
-                          <span className="text-lg font-extrabold text-white">KES {parseFloat(pkg.price).toLocaleString()}</span>
-                        </div>
-
-                        {isOwnerGroup ? (
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => handleOpenEditModal(pkg)}
-                              className="bg-emerald-800 hover:bg-emerald-700 text-orange-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-emerald-600/50 flex items-center gap-1.5"
-                            >
-                              <Edit className="w-3.5 h-3.5" /> Edit
-                            </button>
-                            <button 
-                              onClick={() => handleDeletePackage(pkg.id)}
-                              className="bg-red-950 hover:bg-red-900 text-red-300 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-red-800/80 flex items-center gap-1.5"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Remove
-                            </button>
+                        <div className="pt-4 border-t border-emerald-800/40 flex items-center justify-between mt-auto">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/70 block">Package Price</span>
+                            <span className="text-lg font-extrabold text-white">KES {parseFloat(pkg.price).toLocaleString()}</span>
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleBookService(pkg)}
-                            className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-orange-500/20 flex items-center gap-2"
-                          >
-                            Book Tier
-                          </button>
-                        )}
+
+                          {isOwnerGroup ? (
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleOpenEditModal(pkg)}
+                                className="bg-emerald-800 hover:bg-emerald-700 text-orange-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-emerald-600/50 flex items-center gap-1.5"
+                              >
+                                <Edit className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeletePackage(pkg.id)}
+                                className="bg-red-950 hover:bg-red-900 text-red-300 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-red-800/80 flex items-center gap-1.5"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => handleBookService(pkg)}
+                              className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-orange-500/20 flex items-center gap-2"
+                            >
+                              Book Tier
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -339,6 +384,30 @@ export default function VendorMarketplace() {
             )}
 
             <form onSubmit={handleSubmit} className="bg-emerald-900/20 p-8 rounded-3xl border border-emerald-800/60 space-y-8">
+              
+              {/* Image Upload Section */}
+              <div className="bg-emerald-950/50 p-6 rounded-2xl border border-emerald-800/60 flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative">
+                  <div className="w-32 h-20 rounded-xl overflow-hidden border border-emerald-700 bg-emerald-900 flex items-center justify-center shadow-inner">
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIconSolid className="w-8 h-8 text-emerald-600" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1 w-full text-center sm:text-left">
+                  <label className="block text-sm font-semibold text-emerald-300 mb-2">Package Banner Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full text-xs text-emerald-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 cursor-pointer"
+                  />
+                  <p className="text-[10px] text-emerald-400/60 mt-2">Recommended size: 1200x600 pixels (16:9 ratio)</p>
+                </div>
+              </div>
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-emerald-300 mb-2">Package Title</label>
