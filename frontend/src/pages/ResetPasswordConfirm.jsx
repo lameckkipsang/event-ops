@@ -23,8 +23,8 @@ export default function ResetPasswordConfirm() {
     setError('');
     
     try {
-      // Securely POST the data to the backend API
-      await api.post(`auth/password/reset/confirm/${uid}/${token}/`, {
+      // Securely POST the data to the backend API without the uid/token in the URL path
+      await api.post(`auth/password/reset/confirm/`, {
         uid: uid,
         token: token,
         new_password1: passwords.new_password1,
@@ -32,7 +32,17 @@ export default function ResetPasswordConfirm() {
       });
       setStatus('success');
     } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.new_password1?.[0] || "Invalid or expired reset link. Please request a new one.");
+      const data = err.response?.data;
+      
+      // Catch and display exact Django validation errors
+      const errorMessage = 
+        data?.non_field_errors?.[0] || 
+        data?.detail || 
+        data?.new_password1?.[0] || 
+        data?.new_password?.[0] || 
+        "Invalid or expired reset link. Please request a new one.";
+
+      setError(errorMessage);
       setStatus('error');
     }
   };
