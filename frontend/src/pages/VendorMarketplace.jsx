@@ -194,7 +194,8 @@ export default function VendorMarketplace() {
     if (imagePath.startsWith('http')) return imagePath;
     const cleanPath = imagePath.startsWith('/media/') ? imagePath : `/media/${imagePath}`;
     const formattedPath = cleanPath.replace(/\/\//g, '/');
-    return `http://localhost:8000${formattedPath}`;
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+    return `${backendUrl}${formattedPath}`;
   };
 
   return (

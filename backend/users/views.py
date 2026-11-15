@@ -13,6 +13,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
 from django.utils import timezone
+from decouple import config
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -62,7 +63,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
-    callback_url = "http://localhost:8000"
+    callback_url = config('GOOGLE_CALLBACK_URL', default='http://localhost:8000')
 
     def post(self, request, *args, **kwargs):
         is_register = request.data.get('is_register', False)
