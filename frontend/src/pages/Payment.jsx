@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt, Calendar, Info, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../services/api';
@@ -13,14 +13,19 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [pollMessage, setPollMessage] = useState('');
 
   const [myEvents, setMyEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(eventId || '');
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  const userRole = localStorage.getItem('user_role') || '';
-  
-  // Get the exact logged-in user ID to filter the events
+  const timer = useRef(null);
+
+  // Clear polling interval on unmount
+  useEffect(() => {
+    return () => clearInterval(timer.current);
+  }, []);
+
   const currentUserId = parseInt(localStorage.getItem('user_id'), 10);
   
   const resolvedType = type || (item?.ticket_type || item?.tier_id ? 'event_ticket' : 'vendor_package');
@@ -29,21 +34,15 @@ export default function Payment() {
   useEffect(() => {
     if (isVendorBooking && currentUserId) {
       setEventsLoading(true);
-      
-      // We pass the organizer param for the backend, but also enforce a strict frontend filter
       api.get('events/', { params: { organizer: currentUserId } })
         .then(res => {
           const fetchedEvents = res.data.results || res.data || [];
-          
-          // Only keep events where the organizer ID matches your current user ID
           const myOwnEvents = fetchedEvents.filter(ev => {
             const organizerId = typeof ev.organizer === 'object' ? ev.organizer?.id : ev.organizer;
             return parseInt(organizerId, 10) === currentUserId;
           });
 
           setMyEvents(myOwnEvents);
-          
-          // Auto-select if you only have one event
           if (myOwnEvents.length === 1 && !selectedEventId) {
             setSelectedEventId(myOwnEvents[0].id);
           }
@@ -75,10 +74,39 @@ export default function Payment() {
     );
   }
 
+  const pollStatus = (checkoutRequestId) => {
+    let attempts = 0;
+    timer.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await api.get(`finance/status/${checkoutRequestId}/`);
+        const data = res.data;
+
+        if (data.status === 'COMPLETED') {
+          clearInterval(timer.current);
+          setPaymentSuccess(true);
+          setLoading(false);
+          setPollMessage(`Payment successful! Receipt: ${data.receipt || 'Confirmed'}`);
+        } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
+          clearInterval(timer.current);
+          setError('Payment failed or was cancelled on your phone.');
+          setLoading(false);
+        } else if (attempts >= 25) {
+          clearInterval(timer.current);
+          setError('No confirmation received yet. Check your dashboard shortly.');
+          setLoading(false);
+        }
+      } catch (err) {
+        // Keep polling on network blips
+      }
+    }, 3000);
+  };
+
   const handlePayment = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setPollMessage('Check your phone and enter your M-Pesa PIN...');
 
     let formattedPhone = phoneNumber.trim();
     if (formattedPhone.startsWith('0')) {
@@ -98,7 +126,7 @@ export default function Payment() {
       payload.ticket_tier_id = item.id;
     } else {
       payload.package_id = item.id;
-      payload.event_id = selectedEventId || item.event || item.event_id || (typeof item.event === 'object' ? item.event?.id : null);
+      payload.event_id = selectedEventId || item.event || item.event_id;
       
       if (!payload.event_id) {
         setError('Please select an event for this vendor booking.');
@@ -108,15 +136,21 @@ export default function Payment() {
     }
 
     try {
-      await api.post(endpoint, payload);
-      setPaymentSuccess(true);
+      const res = await api.post(endpoint, payload);
+      const checkoutRequestId = res.data.details?.CheckoutRequestID;
+      
+      if (checkoutRequestId) {
+        pollStatus(checkoutRequestId);
+      } else {
+        setPaymentSuccess(true);
+        setLoading(false);
+      }
     } catch (err) {
       if (err.response?.status !== 400) {
         console.error('Payment initiation error:', err);
       }
-      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to initiate M-Pesa STK Push. Please verify your phone number and try again.';
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to initiate M-Pesa STK Push.';
       setError(errorMsg);
-    } finally {
       setLoading(false);
     }
   };
@@ -153,7 +187,7 @@ export default function Payment() {
                <Info className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                <p className="text-xs text-emerald-200/90">
                   <strong className="text-emerald-100 block mb-0.5">How EventOps Escrow Works</strong>
-                  Your funds are held securely by EventOps. We only release the payment to the vendor/organizer once the service delivery or event is confirmed.
+                  Your funds are held securely by EventOps. We only release the payment once service delivery or event is confirmed.
                </p>
             </div>
         </div>
@@ -179,10 +213,8 @@ export default function Payment() {
           {paymentSuccess ? (
             <div className="p-6 bg-emerald-950/90 border border-emerald-700/80 rounded-2xl text-center space-y-4">
               <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-              <h3 className="text-xl font-bold text-white">STK Push Sent!</h3>
-              <p className="text-xs text-emerald-300">
-                Please check your phone ({phoneNumber}) and enter your M-Pesa PIN to complete payment.
-              </p>
+              <h3 className="text-xl font-bold text-white">Payment Confirmed!</h3>
+              <p className="text-xs text-emerald-300">{pollMessage}</p>
               <button
                 onClick={() =>
                   navigate('/profile', {
@@ -197,8 +229,14 @@ export default function Payment() {
             </div>
           ) : (
             <form onSubmit={handlePayment} className="space-y-5">
-              
-              {isVendorBooking && (
+              {loading && (
+                <div className="p-4 bg-orange-950/40 border border-orange-500/30 rounded-xl flex items-center gap-3 text-orange-200 text-xs">
+                  <Loader2 className="w-5 h-5 animate-spin shrink-0 text-orange-500" />
+                  <span>{pollMessage}</span>
+                </div>
+              )}
+
+              {isVendorBooking && !loading && (
                 <div>
                   <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
                     Target Event
@@ -240,33 +278,35 @@ export default function Payment() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
-                  M-Pesa Phone Number
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="tel"
-                    required
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="254712345678"
-                    className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
-                  />
+              {!loading && (
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
+                    M-Pesa Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="tel"
+                      required
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="254712345678"
+                      className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-600 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-emerald-400/70 mt-1">
+                    Format: 2547XXXXXXXX or 07XXXXXXXX
+                  </p>
                 </div>
-                <p className="text-[11px] text-emerald-400/70 mt-1">
-                  Format: 2547XXXXXXXX or 07XXXXXXXX
-                </p>
-              </div>
+              )}
 
               <button
                 type="submit"
                 disabled={loading || (isVendorBooking && !selectedEventId) || eventsLoading}
                 className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
               >
-                {loading ? 'Initiating M-Pesa...' : `Pay KES ${parseFloat(item.price || item.cost).toLocaleString()}`}
-                <ArrowRight className="w-4 h-4" />
+                {loading ? 'Waiting for Confirmation...' : `Pay KES ${parseFloat(item.price || item.cost).toLocaleString()}`}
+                {!loading && <ArrowRight className="w-4 h-4" />}
               </button>
             </form>
           )}
