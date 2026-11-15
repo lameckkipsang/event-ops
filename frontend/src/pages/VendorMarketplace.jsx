@@ -124,7 +124,9 @@ export default function VendorMarketplace() {
       description: pkg.description,
     });
     setImageFile(null);
-    setImagePreview(pkg.image || null);
+    
+    // Preview the existing image
+    setImagePreview(getImageUrl(pkg.image));
     setFormError('');
     setIsModalOpen(true);
   };
@@ -161,23 +163,18 @@ export default function VendorMarketplace() {
     submitData.append('price', formData.price);
     submitData.append('description', formData.description);
     
-    // Only append the image if a new file was actually selected
+    // Tell Django this package is available upon creation
+    submitData.append('is_available', 'true');
+    
     if (imageFile) {
       submitData.append('image', imageFile);
     }
 
     try {
-      // Explicitly override the global JSON header so Axios encodes the file properly
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      };
-
       if (editingPackageId) {
-        await api.patch(`packages/${editingPackageId}/`, submitData, config);
+        await api.patch(`packages/${editingPackageId}/`, submitData);
       } else {
-        await api.post(`packages/`, submitData, config);
+        await api.post(`packages/`, submitData);
       }
       setIsModalOpen(false);
       fetchPackages();
@@ -187,6 +184,18 @@ export default function VendorMarketplace() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Helper function to construct the image URL if the backend returns a relative path
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // Ensure the path is prefixed with /media/ and point to the Django backend
+    const cleanPath = imagePath.startsWith('/media/') ? imagePath : `/media/${imagePath}`;
+    // Remove duplicate slashes if any
+    const formattedPath = cleanPath.replace(/\/\//g, '/');
+    return `http://localhost:8000${formattedPath}`;
   };
 
   return (
@@ -298,7 +307,11 @@ export default function VendorMarketplace() {
                       {/* Package Banner Image */}
                       {pkg.image ? (
                         <div className="w-full h-40 bg-emerald-900 border-b border-emerald-800/60 relative overflow-hidden">
-                           <img src={pkg.image} alt={pkg.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                           <img 
+                             src={getImageUrl(pkg.image)} 
+                             alt={pkg.title} 
+                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                           />
                            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 to-transparent opacity-80"></div>
                         </div>
                       ) : (
