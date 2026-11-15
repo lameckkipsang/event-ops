@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, ArrowRight, Check } from 'lucide-react';
 import { authService } from '../services/authApi';
-import RoleSelectModal from '../components/RoleSelectModal';
 import { useToast } from '../contexts/ToastContext'; 
 
 export default function Login() {
@@ -16,8 +15,6 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showRoleModal, setShowRoleModal] = useState(false);
-  const [pendingGoogleToken, setPendingGoogleToken] = useState(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,48 +56,43 @@ export default function Login() {
     }
   };
 
+  // Direct Login without the Role Modal
   const realGoogleLogin = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      setPendingGoogleToken(tokenResponse.access_token);
-      setShowRoleModal(true); 
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setError('');
+      try {
+        // Pass role = null and isRegister = false
+        const data = await authService.googleLogin(tokenResponse.access_token, null, false);
+        
+        localStorage.setItem('access_token', data.access);
+        localStorage.setItem('refresh_token', data.refresh);
+        if (data.user?.pk) localStorage.setItem('user_id', data.user.pk);
+        if (data.user?.username) localStorage.setItem('username', data.user.username);
+        localStorage.setItem('user_role', data.user?.role || data.role);
+
+        addToast({ 
+          title: 'Google Login Successful', 
+          message: 'Welcome back to EventOps!', 
+          type: 'success' 
+        });
+
+        if (redirectData.returnTo) {
+          navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
+        } else {
+          navigate('/');
+        }
+      } catch (err) {
+        console.error('Google OAuth error:', err);
+        setError(err.response?.data?.error || 'Google authentication failed. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     },
     onError: () => {
       setError('Google sign-in was unsuccessful. Please try again.');
     },
   });
-
-  const handleRoleSelected = async (role) => {
-    setShowRoleModal(false);
-    setLoading(true);
-    try {
-      const data = await authService.googleLogin(pendingGoogleToken, role);
-      
-      localStorage.setItem('access_token', data.access);
-      localStorage.setItem('refresh_token', data.refresh);
-      if (data.user?.pk) localStorage.setItem('user_id', data.user.pk);
-      if (data.user?.username) localStorage.setItem('username', data.user.username);
-      localStorage.setItem('user_role', data.user?.role || role);
-
-      addToast({ 
-        title: 'Google Account Linked', 
-        message: `Welcome to EventOps!`, 
-        type: 'success' 
-      });
-
-      if (redirectData.returnTo) {
-        navigate(redirectData.returnTo, { state: { item: redirectData.item, type: redirectData.type } });
-      } else {
-        navigate('/');
-      }
-    } catch (err) {
-      if (err.response?.status !== 400 && err.response?.status !== 401) {
-        console.error('Google OAuth error:', err);
-      }
-      setError('Google authentication failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -my-6 text-white border-t border-emerald-900 overflow-hidden">
@@ -164,7 +156,8 @@ export default function Login() {
              <button
                 type="button"
                 onClick={() => realGoogleLogin()}
-                className="w-full bg-transparent hover:bg-emerald-900/40 text-white font-semibold py-3 rounded-xl border border-emerald-700/80 transition-all flex items-center justify-center gap-3 text-sm"
+                disabled={loading}
+                className="w-full bg-transparent hover:bg-emerald-900/40 text-white font-semibold py-3 rounded-xl border border-emerald-700/80 transition-all flex items-center justify-center gap-3 text-sm disabled:opacity-50"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.1 8.9 5 12 5z"/>
@@ -172,7 +165,7 @@ export default function Login() {
                   <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.2-2 .4-2.7L1.6 6.4C.6 8.4 0 10.6 0 13s.6 4.6 1.6 6.6l3.7-2.9z"/>
                   <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5.3L1.6 15.7C3.5 19.5 7.4 23 12 23 z"/>
                 </svg>
-                Continue with Google
+                {loading ? 'Authenticating...' : 'Continue with Google'}
               </button>
           </div>
 
@@ -252,12 +245,6 @@ export default function Login() {
           </p>
         </div>
       </div>
-
-      <RoleSelectModal
-        isOpen={showRoleModal}
-        onSubmit={handleRoleSelected}
-        onCancel={() => setShowRoleModal(false)}
-      />
     </div>
   );
 }
