@@ -103,7 +103,7 @@ export default function Login() {
     e.preventDefault();
     setResetStatus('loading');
     try {
-      await api.post('users/auth/password-reset/', { email: resetEmail });
+      await api.post('auth/password/reset/', { email: resetEmail });
       setResetStatus('success');
     } catch (err) {
       setResetStatus('error');
