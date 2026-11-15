@@ -74,7 +74,8 @@ export default function Register() {
     setShowRoleModal(false);
     setLoading(true);
     try {
-      const data = await authService.googleLogin(pendingGoogleToken, role);
+      // Pass true as the third parameter to tell the backend this is a registration attempt
+      const data = await authService.googleLogin(pendingGoogleToken, role, true);
       
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
@@ -97,7 +98,7 @@ export default function Register() {
       if (err.response?.status !== 400 && err.response?.status !== 401) {
         console.error('Google OAuth error:', err);
       }
-      setError('Google registration failed. Please try again.');
+      setError(err.response?.data?.error || 'Google registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
