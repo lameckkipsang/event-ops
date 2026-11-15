@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
-import { Mail, Lock, ArrowRight, Check } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Check, Eye, EyeOff, X, Loader2 } from 'lucide-react';
 import { authService } from '../services/authApi';
 import { useToast } from '../contexts/ToastContext'; 
+import api from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +16,12 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Password Reset States
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetStatus, setResetStatus] = useState('idle'); // idle | loading | success | error
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -56,13 +63,11 @@ export default function Login() {
     }
   };
 
-  // Direct Login without the Role Modal
   const realGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
       setError('');
       try {
-        // Pass role = null and isRegister = false
         const data = await authService.googleLogin(tokenResponse.access_token, null, false);
         
         localStorage.setItem('access_token', data.access);
@@ -94,8 +99,19 @@ export default function Login() {
     },
   });
 
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setResetStatus('loading');
+    try {
+      await api.post('users/auth/password-reset/', { email: resetEmail });
+      setResetStatus('success');
+    } catch (err) {
+      setResetStatus('error');
+    }
+  };
+
   return (
-    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -my-6 text-white border-t border-emerald-900 overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -my-6 text-white border-t border-emerald-900 overflow-hidden relative">
       
       {/* Left Side - Info Panel */}
       <div className="w-full md:w-1/2 bg-emerald-950 p-10 lg:p-20 flex flex-col justify-center relative overflow-hidden border-b md:border-b-0 md:border-r border-emerald-900">
@@ -208,14 +224,21 @@ export default function Login() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-emerald-500 absolute left-3 top-3.5" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   required
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="********"
-                  className="w-full bg-emerald-950/50 border border-emerald-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-emerald-700 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-emerald-950/50 border border-emerald-800 rounded-xl pl-10 pr-12 py-3 text-sm text-white placeholder-emerald-700 focus:outline-none focus:border-orange-500 transition-colors tracking-wider"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-emerald-600 hover:text-emerald-400 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
             
@@ -224,7 +247,17 @@ export default function Login() {
                 <input type="checkbox" className="accent-orange-500 w-3.5 h-3.5 rounded bg-emerald-900 border-emerald-700" />
                 Remember me
               </label>
-              <a href="#" className="text-orange-400 font-semibold hover:underline">Forgot password?</a>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(formData.email);
+                  setShowResetModal(true);
+                  setResetStatus('idle');
+                }}
+                className="text-orange-400 font-semibold hover:underline bg-transparent border-none p-0 cursor-pointer"
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button
@@ -245,6 +278,72 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Password Reset Modal Overlay */}
+      {showResetModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-emerald-950 border border-emerald-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative">
+            <button
+              onClick={() => setShowResetModal(false)}
+              className="absolute right-5 top-5 text-emerald-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {resetStatus === 'success' ? (
+              <div className="text-center space-y-4">
+                <div className="w-12 h-12 bg-emerald-800/50 rounded-full flex items-center justify-center mx-auto">
+                  <Check className="w-6 h-6 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Check Your Email</h3>
+                <p className="text-sm text-emerald-300">
+                  If an account exists for {resetEmail}, we've sent a password reset link.
+                </p>
+                <button
+                  onClick={() => setShowResetModal(false)}
+                  className="w-full bg-emerald-800 hover:bg-emerald-700 text-white py-2.5 rounded-xl mt-4 font-semibold transition-colors"
+                >
+                  Back to Login
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <h3 className="text-xl font-bold text-white">Reset Password</h3>
+                <p className="text-xs text-emerald-300">
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+                
+                {resetStatus === 'error' && (
+                  <p className="text-xs text-red-400 bg-red-950/50 p-2 rounded-lg text-center">
+                    Failed to send reset link. Please try again.
+                  </p>
+                )}
+
+                <form onSubmit={handlePasswordReset} className="space-y-4">
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-emerald-500 absolute left-3.5 top-3.5" />
+                    <input
+                      type="email"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="w-full bg-emerald-900/50 border border-emerald-800 text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={resetStatus === 'loading' || !resetEmail}
+                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all flex justify-center items-center gap-2"
+                  >
+                    {resetStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Reset Link'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
