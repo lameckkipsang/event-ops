@@ -60,3 +60,29 @@ def initiate_stk_push(phone_number, amount, callback_url, reference_id):
 
     response = requests.post(api_url, json=payload, headers=headers)
     return response.json()
+
+def stk_query(checkout_request_id):
+    access_token = get_mpesa_access_token()
+    if not access_token:
+        return {"error": "Failed to retrieve M-Pesa access token"}
+
+    api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    shortcode = getattr(settings, 'MPESA_SHORTCODE', '174379')
+    passkey = getattr(settings, 'MPESA_PASSKEY', '')
+    password = generate_mpesa_password(shortcode, passkey, timestamp)
+
+    payload = {
+        "BusinessShortCode": shortcode,
+        "Password": password,
+        "Timestamp": timestamp,
+        "CheckoutRequestID": checkout_request_id,
+    }
+
+    response = requests.post(api_url, json=payload, headers=headers)
+    return response.json()
