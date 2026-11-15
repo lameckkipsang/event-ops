@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt, Calendar, Info } from 'lucide-react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { CreditCard, Phone, ShieldCheck, ArrowRight, CheckCircle2, Receipt, Calendar, Info, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../services/api';
 
 export default function Payment() {
@@ -16,25 +16,47 @@ export default function Payment() {
 
   const [myEvents, setMyEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(eventId || '');
+  const [eventsLoading, setEventsLoading] = useState(false);
 
   const userRole = localStorage.getItem('user_role') || '';
-  const resolvedType = type || (item?.ticket_type || item?.tier_id ? 'event_ticket' : 'vendor_booking');
-  const isVendorBooking = resolvedType === 'vendor_booking';
-  const isUnauthorizedAttendee = isVendorBooking && userRole !== 'ORGANIZER';
+  
+  // Get the exact logged-in user ID to filter the events
+  const currentUserId = parseInt(localStorage.getItem('user_id'), 10);
+  
+  const resolvedType = type || (item?.ticket_type || item?.tier_id ? 'event_ticket' : 'vendor_package');
+  const isVendorBooking = resolvedType === 'vendor_package' || resolvedType === 'vendor_booking';
 
   useEffect(() => {
-    if (isVendorBooking && userRole === 'ORGANIZER') {
-      api.get('events/')
+    if (isVendorBooking && currentUserId) {
+      setEventsLoading(true);
+      
+      // We pass the organizer param for the backend, but also enforce a strict frontend filter
+      api.get('events/', { params: { organizer: currentUserId } })
         .then(res => {
           const fetchedEvents = res.data.results || res.data || [];
-          setMyEvents(fetchedEvents);
-          if (fetchedEvents.length === 1 && !selectedEventId) {
-            setSelectedEventId(fetchedEvents[0].id);
+          
+          // Only keep events where the organizer ID matches your current user ID
+          const myOwnEvents = fetchedEvents.filter(ev => {
+            const organizerId = typeof ev.organizer === 'object' ? ev.organizer?.id : ev.organizer;
+            return parseInt(organizerId, 10) === currentUserId;
+          });
+
+          setMyEvents(myOwnEvents);
+          
+          // Auto-select if you only have one event
+          if (myOwnEvents.length === 1 && !selectedEventId) {
+            setSelectedEventId(myOwnEvents[0].id);
           }
         })
-        .catch(err => console.error('Failed to fetch events for dropdown:', err));
+        .catch(err => {
+          console.error('Failed to fetch events for dropdown:', err);
+          setError("Failed to load your events. Please refresh the page.");
+        })
+        .finally(() => {
+          setEventsLoading(false);
+        });
     }
-  }, [isVendorBooking, userRole, selectedEventId]);
+  }, [isVendorBooking, selectedEventId, currentUserId]);
 
   if (!item) {
     return (
@@ -154,11 +176,7 @@ export default function Payment() {
             </div>
           )}
 
-          {isUnauthorizedAttendee ? (
-            <div className="mb-6 p-4 bg-red-950/60 border border-red-800/80 rounded-xl text-red-300 text-sm text-center font-semibold">
-              Only Event Organizers can book vendor services.
-            </div>
-          ) : paymentSuccess ? (
+          {paymentSuccess ? (
             <div className="p-6 bg-emerald-950/90 border border-emerald-700/80 rounded-2xl text-center space-y-4">
               <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
               <h3 className="text-xl font-bold text-white">STK Push Sent!</h3>
@@ -185,26 +203,39 @@ export default function Payment() {
                   <label className="block text-xs font-semibold text-emerald-300 mb-1.5">
                     Target Event
                   </label>
-                  <div className="relative">
-                    <Calendar className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                    <select
-                      required
-                      value={selectedEventId}
-                      onChange={(e) => setSelectedEventId(e.target.value)}
-                      className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
-                    >
-                      <option value="" disabled>-- Select the event for this service --</option>
-                      {myEvents.map((ev) => (
-                        <option key={ev.id} value={ev.id}>
-                          {ev.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {myEvents.length === 0 && (
-                    <p className="text-[11px] text-red-400 mt-1">
-                      You must create an event first before booking a vendor.
-                    </p>
+                  
+                  {eventsLoading ? (
+                    <div className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl px-4 py-3 text-sm text-emerald-400/50 flex items-center gap-2">
+                       <Loader2 className="w-4 h-4 animate-spin" /> Loading your events...
+                    </div>
+                  ) : myEvents.length === 0 ? (
+                    <div className="p-4 bg-orange-950/40 border border-orange-500/30 rounded-xl flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-orange-200 font-semibold mb-1">No Events Found</p>
+                        <p className="text-xs text-emerald-200/80 mb-3">You must create an event first before you can book vendor services.</p>
+                        <Link to="/manage-events" className="text-xs bg-orange-500 text-white px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors inline-block">
+                          Create an Event
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Calendar className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
+                      <select
+                        required
+                        value={selectedEventId}
+                        onChange={(e) => setSelectedEventId(e.target.value)}
+                        className="w-full bg-emerald-950 border border-emerald-700/80 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
+                      >
+                        <option value="" disabled>-- Select the event for this service --</option>
+                        {myEvents.map((ev) => (
+                          <option key={ev.id} value={ev.id}>
+                            {ev.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                 </div>
               )}
@@ -231,7 +262,7 @@ export default function Payment() {
 
               <button
                 type="submit"
-                disabled={loading || (isVendorBooking && !selectedEventId)}
+                disabled={loading || (isVendorBooking && !selectedEventId) || eventsLoading}
                 className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 mt-4"
               >
                 {loading ? 'Initiating M-Pesa...' : `Pay KES ${parseFloat(item.price || item.cost).toLocaleString()}`}
