@@ -47,6 +47,7 @@ export default function VendorMarketplace() {
   const jwtData = token ? parseJwt(token) : null;
   const currentUsername = localStorage.getItem('username') || jwtData?.username || '';
   
+  const currentUserId = parseInt(localStorage.getItem('user_id'), 10);
   const isVendor = token && (role === 'VENDOR' || role === 'SECURITY');
 
   const fetchPackages = () => {
@@ -124,8 +125,6 @@ export default function VendorMarketplace() {
       description: pkg.description,
     });
     setImageFile(null);
-    
-    // Preview the existing image
     setImagePreview(getImageUrl(pkg.image));
     setFormError('');
     setIsModalOpen(true);
@@ -162,8 +161,6 @@ export default function VendorMarketplace() {
     submitData.append('tier', formData.tier);
     submitData.append('price', formData.price);
     submitData.append('description', formData.description);
-    
-    // Tell Django this package is available upon creation
     submitData.append('is_available', 'true');
     
     if (imageFile) {
@@ -171,10 +168,16 @@ export default function VendorMarketplace() {
     }
 
     try {
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      };
+
       if (editingPackageId) {
-        await api.patch(`packages/${editingPackageId}/`, submitData);
+        await api.patch(`packages/${editingPackageId}/`, submitData, config);
       } else {
-        await api.post(`packages/`, submitData);
+        await api.post(`packages/`, submitData, config);
       }
       setIsModalOpen(false);
       fetchPackages();
@@ -186,14 +189,10 @@ export default function VendorMarketplace() {
     }
   };
 
-  // Helper function to construct the image URL if the backend returns a relative path
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
     if (imagePath.startsWith('http')) return imagePath;
-    
-    // Ensure the path is prefixed with /media/ and point to the Django backend
     const cleanPath = imagePath.startsWith('/media/') ? imagePath : `/media/${imagePath}`;
-    // Remove duplicate slashes if any
     const formattedPath = cleanPath.replace(/\/\//g, '/');
     return `http://localhost:8000${formattedPath}`;
   };
@@ -274,7 +273,7 @@ export default function VendorMarketplace() {
       ) : (
         <div className="space-y-12">
           {groupedVendors.map((vendorGroup, idx) => {
-            const isOwnerGroup = vendorGroup.vendor_username?.toLowerCase() === currentUsername?.toLowerCase();
+            const isOwnerGroup = vendorGroup.vendor_id === currentUserId;
 
             return (
               <div key={idx} className="bg-emerald-900/20 border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl">
@@ -285,7 +284,7 @@ export default function VendorMarketplace() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
-                        {vendorGroup.company_name} 
+                        {vendorGroup.company_name || vendorGroup.vendor_username} 
                         {isOwnerGroup && <span className="text-[10px] bg-emerald-700/80 text-white px-2 py-0.5 rounded-full ml-2 font-semibold">Your Company</span>}
                       </h2>
                       <p className="text-sm text-emerald-300 font-medium">@{vendorGroup.vendor_username}</p>
