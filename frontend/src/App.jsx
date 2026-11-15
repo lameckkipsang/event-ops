@@ -15,6 +15,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import GlobalNotificationListener from './components/GlobalNotificationListener';
 import EscrowPolicy from './pages/EscrowPolicy';
 import HelpSupport from './pages/HelpSupport';
+import ResetPasswordConfirm from './pages/ResetPasswordConfirm';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/payment" element={<Payment />} />
               <Route path="/escrow-policy" element={<EscrowPolicy />} />
               <Route path="/support" element={<HelpSupport />} />
+              <Route path="/reset-password/:uid/:token" element={<ResetPasswordConfirm />} />
             </Routes>
           </main>
           <Footer />

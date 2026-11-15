@@ -66,6 +66,7 @@ SITE_ID = 1
 
 REST_AUTH = {
     'USE_JWT': True,
+    'PASSWORD_RESET_SERIALIZER': 'users.serializers.CustomPasswordResetSerializer',
 }
 
 SOCIALACCOUNT_PROVIDERS = {

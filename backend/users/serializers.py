@@ -4,6 +4,7 @@ import uuid
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from .models import Notification
+from dj_rest_auth.serializers import PasswordResetSerializer
 
 User = get_user_model()
 
@@ -54,3 +55,10 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = '__all__'
+
+class CustomPasswordResetSerializer(PasswordResetSerializer):
+    def get_email_options(self):
+        # This forces the email link to use your Vercel frontend domain
+        return {
+            'domain_override': 'eventops-one.vercel.app',
+        }
