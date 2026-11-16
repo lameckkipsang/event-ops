@@ -78,7 +78,10 @@ class TicketCheckInView(APIView):
             return Response({"error": "Invalid ticket code. Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
-        if getattr(user, 'role', None) == 'SECURITY':
+        is_organizer = ticket.event.organizer == user
+        is_security = getattr(user, 'role', None) == 'SECURITY'
+
+        if is_security:
             BookingRequest = apps.get_model('marketplace', 'BookingRequest')
             has_event_access = BookingRequest.objects.filter(
                 event=ticket.event,
@@ -90,6 +93,10 @@ class TicketCheckInView(APIView):
                 return Response({
                     "error": "Access Denied. You are not assigned to provide security for this specific event."
                 }, status=status.HTTP_403_FORBIDDEN)
+        elif not is_organizer:
+            return Response({
+                "error": "Access Denied. Only the event organizer or assigned security can check in tickets."
+            }, status=status.HTTP_403_FORBIDDEN)
 
         if ticket.is_checked_in:
             return Response({
